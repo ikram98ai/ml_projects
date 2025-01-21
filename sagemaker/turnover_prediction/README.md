@@ -1,1 +1,1 @@
-![ml pipeline](https://github.com/user-attachments/assets/3b38b396-a9f5-420a-b2c6-d7e4c72fb629)
+![mlops with sagemaker](https://github.com/user-attachments/assets/76ff8202-775f-4986-bf5d-9426bdacd05d)
