@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rose AI Chat</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+
+        .chat-container {
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 20px;
+            height: 70vh;
+            overflow-y: auto;
+            margin-bottom: 20px;
+        }
+
+        .message {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 5px;
+        }
+
+        .user-message {
+            background-color: #e3f2fd;
+            margin-left: 20%;
+        }
+
+        .ai-message {
+            background-color: #f5f5f5;
+            margin-right: 20%;
+        }
+
+        .input-container {
+            display: flex;
+            gap: 10px;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+
+        button {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <h1>Chat with Rose AI</h1>
+    <div class="chat-container" id="chatContainer"></div>
+    <div class="input-container">
+        <input type="text" id="messageInput" placeholder="Type your message...">
+        <button onclick="sendMessage()">Send</button>
+    </div>
+
+    <div class="upload-container" style="margin-top: 20px;">
+        <h3>Upload Documents</h3>
+        <input type="text" id="collectionName" placeholder="Collection Name" style="margin-bottom: 10px; padding: 8px; width: 200px;">
+        <input type="file" id="documentInput" accept=".pdf,.docx" style="margin-bottom: 10px;">
+        <button onclick="uploadDocument()" style="background-color: #28a745;">Upload Document</button>
+        <div id="uploadStatus" style="margin-top: 10px; color: #666;"></div>
+    </div>
+
+    <script>
+        const chatContainer = document.getElementById('chatContainer');
+        const messageInput = document.getElementById('messageInput');
+
+        function addMessage(message, isUser = false) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isUser ? 'user-message' : 'ai-message'}`;
+            messageDiv.textContent = message;
+            chatContainer.appendChild(messageDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        async function sendMessage() {
+            const message = messageInput.value.trim();
+            if (!message) return;
+
+            addMessage(message, true);
+            messageInput.value = '';
+
+            try {
+                const response = await fetch('http://localhost:3008/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        message: message
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+
+                const data = await response.json();
+                addMessage(data.response);
+            } catch (error) {
+                console.error('Error:', error);
+                addMessage('Sorry, there was an error processing your request.');
+            }
+        }
+
+        // Allow sending messages with Enter key
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+
+        
+        async function uploadDocument() {
+        const fileInput = document.getElementById('documentInput');
+        const collectionName = document.getElementById('collectionName').value;
+        const statusDiv = document.getElementById('uploadStatus');
+        
+        if (!collectionName || !fileInput.files[0]) {
+            statusDiv.textContent = 'Please fill collection name and select a file';
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('document', fileInput.files[0]);
+        formData.append('collectionName', collectionName);
+
+        try {
+            statusDiv.textContent = 'Uploading...';
+            const response = await fetch('http://localhost:3008/upload', {
+                method: 'POST',
+                body: formData
+            });
+
+            const result = await response.json();
+            if (response.ok) {
+                statusDiv.textContent = `Upload successful! Document ID: ${result.documentId}`;
+                fileInput.value = ''; // Clear file input
+            } else {
+                statusDiv.textContent = `Error: ${result.error}`;
+            }
+        } catch (error) {
+            console.error('Upload error:', error);
+            statusDiv.textContent = 'Upload failed. Please try again.';
+        }
+    }
+
+    </script>
+</body>
+</html>
