@@ -3,7 +3,7 @@ import { createGraph } from "./ai/graph";
 import { HumanMessage } from "@langchain/core/messages";
 import multer from "multer";
 import fs from "fs";
-import { storeDocument, queryDocuments } from "./ai/rag";
+import { processDocument, storeDocument, queryDocuments } from "./ai/rag";
 
 if (!fs.existsSync("uploads")) {
   fs.mkdirSync("uploads");
@@ -55,20 +55,20 @@ app.post(
         return;
       }
 
+      const file = req.file!.buffer
       const filePath = req.file!.path;
       const fileExtension = req.file!.mimetype.split("/")[1];
       // Process the document and store in Qdrant
-      const docId = await storeDocument(
-        req.file.buffer,
+      const chunks = await processDocument(
+        file,
         filePath,
-        collectionName,
         fileExtension
       );
 
+      const chunk_len = await storeDocument(chunks, collectionName);
+
       res.status(200).json({
-        message: "Document processed successfully",
-        documentId: docId,
-        filename: req.file!.originalname,
+        message: `Document stored successfully with chunks ${chunk_len}`,
       });
     } catch (error) {
       console.error("Error processing document:", error);

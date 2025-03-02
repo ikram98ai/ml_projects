@@ -5,6 +5,7 @@ import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
 import { PDFLoader } from "@langchain/community/document_loaders/fs/pdf";
 import { DocxLoader } from "@langchain/community/document_loaders/fs/docx";
 import { v4 as uuidv4 } from "uuid";
+import { Document } from "@langchain/core/documents";
 
 // Create vector store instance
 const embeddings = new GoogleGenerativeAIEmbeddings({
@@ -29,10 +30,9 @@ export async function queryDocuments(
 }
 
 // Universal document processor
-export async function storeDocument(
+export async function processDocument(
   file: Buffer,
   fileName: string,
-  collectionName: string,
   mimeType: string
 ) {
   // Load document based on type
@@ -68,6 +68,15 @@ export async function storeDocument(
       },
     ]
   );
+
+  return chunks
+}
+
+export async function storeDocument(
+  chunks:Document<Record<string, any>>[],
+  collectionName: string,
+) {
+  
 
   const vectorStore = await QdrantVectorStore.fromDocuments(
     chunks,
