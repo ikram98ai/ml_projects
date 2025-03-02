@@ -55,15 +55,10 @@ app.post(
         return;
       }
 
-      const file = req.file!.buffer
-      const filePath = req.file!.path;
-      const fileExtension = req.file!.mimetype.split("/")[1];
+      const filePath = req.file.path;
+      const mimetype = req.file.mimetype;
       // Process the document and store in Qdrant
-      const chunks = await processDocument(
-        file,
-        filePath,
-        fileExtension
-      );
+      const chunks = await processDocument(filePath, mimetype);
 
       const chunk_len = await storeDocument(chunks, collectionName);
 
@@ -87,7 +82,7 @@ app.post("/query", async (req: Request, res: Response) => {
       return;
     }
     const results = await queryDocuments(query, collectionName, 3);
-
+    console.log("Results:", results);
     res.status(200).json({ results });
   } catch (error) {
     console.error("Error querying documents:", error);
@@ -99,7 +94,8 @@ app.post("/query", async (req: Request, res: Response) => {
 app.post("/chat/", async (req: Request, res: Response) => {
   try {
     const { message } = req.body;
-    console.log("Message:", message);
+    const results = await queryDocuments(message, "wellness check", 1);
+    console.log("content::", results[0].pageContent);
     const inputMessage = new HumanMessage({ content: message });
     const config = {
       configurable: { thread_id: "2" },

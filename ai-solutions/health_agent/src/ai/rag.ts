@@ -6,6 +6,8 @@ import { PDFLoader } from "@langchain/community/document_loaders/fs/pdf";
 import { DocxLoader } from "@langchain/community/document_loaders/fs/docx";
 import { v4 as uuidv4 } from "uuid";
 import { Document } from "@langchain/core/documents";
+import dotenv from 'dotenv';
+dotenv.config();
 
 // Create vector store instance
 const embeddings = new GoogleGenerativeAIEmbeddings({
@@ -31,52 +33,69 @@ export async function queryDocuments(
 
 // Universal document processor
 export async function processDocument(
-  file: Buffer,
-  fileName: string,
+  filePath: string,
   mimeType: string
 ) {
-  // Load document based on type
-  console.log("Processing document:", mimeType, fileName);
-  let content: string;
-  if (mimeType === "application/pdf") {
-    const pdfLoader = new PDFLoader(new Blob([file]));
-    const pdfDocs = await pdfLoader.load();
-    content = pdfDocs.map((d) => d.pageContent).join("\n");
-  } else if (
-    mimeType ===
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-  ) {
-    const docsLoader = new DocxLoader(new Blob([file]));
-    const wordDocs = await docsLoader.load();
-    content = wordDocs.map((d) => d.pageContent).join("\n");
-  } else {
-    throw new Error("Unsupported file type");
-  }
+  try {
+    console.log("Processing document:", mimeType, filePath);
+    
+    // Validate input
+    if (!filePath || !mimeType) {
+      throw new Error("Missing required parameters");
+    }
 
-  // Split document into chunks
-  const splitter = new RecursiveCharacterTextSplitter({
-    chunkSize: 1000,
-    chunkOverlap: 200,
-  });
+    // Load document based on type
+    let content: string;
+ 
+    if (mimeType === "application/pdf") {
+      const pdfLoader = new PDFLoader(filePath);
+      const pdfDocs = await pdfLoader.load();
+      content = pdfDocs.map((d) => d.pageContent).join("\n");
+    } else if (
+      mimeType ===
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    ) {
+      const docsLoader = new DocxLoader(filePath);
+      const wordDocs = await docsLoader.load();
+      content = wordDocs.map((d) => d.pageContent).join("\n");
+    } else {
+      throw new Error(`Unsupported file type: ${mimeType}`);
+    }
 
-  const chunks = await splitter.createDocuments(
-    [content],
-    [
+
+    // Validate extracted content
+    if (!content || content.trim().length === 0) {
+      throw new Error("No readable content found in document");
+    }
+
+    // Split document into chunks
+    const splitter = new RecursiveCharacterTextSplitter({
+      chunkSize: 1000,
+      chunkOverlap: 200,
+    });
+
+    const docId = uuidv4(); // Generate unique ID per document
+    const chunks = await splitter.createDocuments(
+      [content],
+      [{ source: filePath, docId }],
       {
-        source: fileName,
-        docId: uuidv4(),
-      },
-    ]
-  );
+        chunkHeader: `SOURCE: ${filePath}\n\n`, // Add header for context
+      }
+    );
 
-  return chunks
+    return chunks;
+  } catch (error) {
+    console.error("Document processing failed:", error);
+    throw new Error(`Document processing failed: ${(error as Error).message}`);
+  }
 }
 
 export async function storeDocument(
-  chunks:Document<Record<string, any>>[],
-  collectionName: string,
+  chunks: Document<Record<string, any>>[],
+  collectionName: string
 ) {
-  
+
+  console.log("qdrant url::", process.env.QDRANT_URL);
 
   const vectorStore = await QdrantVectorStore.fromDocuments(
     chunks,
