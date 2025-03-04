@@ -5,7 +5,7 @@ import { RunnableConfig } from "@langchain/core/runnables";
 import { createReactAgent } from "@langchain/langgraph/prebuilt";
 import AgentState from "../agentState";
 import { semanticSearchTool } from "../tools";
-import { getDocumentsAgentPrompt } from "../utils";
+import { getDocumentsAgentPrompt } from "../promptsUtils";
 
 const llm = new ChatGoogleGenerativeAI({
   model: "gemini-2.0-flash",
@@ -14,7 +14,7 @@ const llm = new ChatGoogleGenerativeAI({
 
 const systemPrompt = getDocumentsAgentPrompt();
 export default async function createDocumentsNode() {
-  // console.log("formattedPrompt::", formattedPrompt);
+
   const documentsAgent = createReactAgent({
     llm,
     prompt: new SystemMessage(systemPrompt),

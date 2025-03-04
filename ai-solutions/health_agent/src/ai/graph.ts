@@ -7,8 +7,6 @@ import {
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import "dotenv/config";
 import { RunnableConfig } from "@langchain/core/runnables";
-import createClassesNode from "./agentNodes/classesNode";
-import createWellnessCheckNode from "./agentNodes/wellnessCheckNode";
 import AgentState from "./agentState";
 import { END } from "@langchain/langgraph";
 import {
@@ -16,6 +14,8 @@ import {
   MessagesPlaceholder,
 } from "@langchain/core/prompts";
 import { z } from "zod";
+import createClassesNode from "./agentNodes/classesNode";
+import createWellnessCheckNode from "./agentNodes/wellnessCheckNode";
 import createDocumentsNode from "./agentNodes/documentsNode";
 import createVideosNode from "./agentNodes/videosNode";
 
@@ -33,11 +33,22 @@ export const members = [
   "videos_agent",
   "documents_agent",
 ] as const;
+export const options = [END, ...members];
 
 ////////////////////////////////////////////////////////////////////Create supervisor///////////////////////////////////////////////////////////////////
 
+/**
+ * Asynchronously creates a supervisor chain for managing a conversation between workers.
+ * 
+ * The function constructs a system prompt for a supervisor to manage a conversation
+ * between specified workers. It uses a chat prompt template to format the prompt with
+ * the given members and options. The routing function is defined to select the next role
+ * in the conversation. The supervisor chain is created by binding the formatted prompt
+ * with the routing tool and selecting the first tool call's arguments.
+ * 
+ * @returns {Promise<any>} A promise that resolves to the supervisor chain.
+ */
 async function createSupervisorChain() {
-  const options = [END, ...members];
 
   const systemPrompt =
     "You are a supervisor tasked with managing a conversation between the" +
@@ -85,6 +96,13 @@ async function createSupervisorChain() {
 }
 
 
+/**
+ * Trims the messages in the given state to keep only the last 10 messages.
+ *
+ * @param state - The current state of the agent, which includes the messages to be trimmed.
+ * @param config - Optional configuration for the runnable, not used in this function.
+ * @returns An object indicating the range of messages to keep.
+ */
 const trimMessagesNode = async (
   state: typeof AgentState.State,
   config?: RunnableConfig
@@ -123,6 +141,7 @@ export async function createGraph() {
     "supervisor",
     (x: typeof AgentState.State) => x.next
   );
+  workflow.addEdge("supervisor", "trim_messages");
 
   members.forEach((member) => {
     workflow.addEdge(member, "trim_messages");

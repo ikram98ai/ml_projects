@@ -6,7 +6,7 @@ import { createReactAgent } from "@langchain/langgraph/prebuilt";
 import { SystemMessage } from "@langchain/core/messages";
 import { playVideoTool, recommendVideosTool } from "../tools";
 import AgentState from "../agentState";
-import { getVideosAgentPrompt } from "../utils";
+import { getVideosAgentPrompt } from "../promptsUtils";
 
 const llm = new ChatGoogleGenerativeAI({
   model: "gemini-2.0-flash",

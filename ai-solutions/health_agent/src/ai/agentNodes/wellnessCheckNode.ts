@@ -6,7 +6,7 @@ import { createReactAgent } from "@langchain/langgraph/prebuilt";
 import { SystemMessage } from "@langchain/core/messages";
 import { alertCnaTool } from "../tools";
 import AgentState from "../agentState";
-import { getWellnessCheckQuestions } from "../utils";
+import { getWellnessCheckQuestions } from "../promptsUtils";
 
 const llm = new ChatGoogleGenerativeAI({
   model: "gemini-2.0-flash",

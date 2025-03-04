@@ -1,3 +1,27 @@
+/**
+ * Sets up an Express server with endpoints for file upload and chat processing.
+ *
+ * - The server listens on port 3008.
+ * - Middleware is added for JSON parsing and serving static files.
+ * - Multer is configured for handling file uploads with specific file type and size restrictions.
+ *
+ * Endpoints:
+ *
+ * - POST /upload
+ *   - Uploads a document, processes it, and stores it in a vector database.
+ *   - Request body should contain a file (PDF or DOCX) and a collection name.
+ *   - Responds with a success message and the number of chunks stored.
+ *
+ * - POST /chat/
+ *   - Processes a chat message and generates a response using a core agent graph.
+ *   - Request body should contain a message.
+ *   - Responds with the generated response content.
+ *
+ * Error Handling:
+ * - Returns appropriate error messages and status codes for various error scenarios.
+ *
+ * @module Server
+ */
 import express, { Request, Response } from "express";
 import { createGraph } from "./ai/graph";
 import { HumanMessage } from "@langchain/core/messages";
@@ -43,7 +67,7 @@ const upload = multer({
   },
 });
 
-// File upload endpoint
+// File upload, preocessed and store in vector database endpoint
 app.post(
   "/upload",
   upload.single("document"),
@@ -57,9 +81,9 @@ app.post(
 
       const filePath = req.file.path;
       const mimetype = req.file.mimetype;
+
       // Process the document and store in Qdrant
       const chunks = await processDocument(filePath, mimetype);
-
       const chunk_len = await storeDocument(chunks, collectionName);
 
       res.status(200).json({
@@ -72,30 +96,11 @@ app.post(
   }
 );
 
-// Query endpoint
-app.post("/query", async (req: Request, res: Response) => {
-  try {
-    const { query, collectionName } = req.body;
-
-    if (!query || !collectionName) {
-      res.status(400).json({ error: "Query and collection name are required" });
-      return;
-    }
-    const results = await queryDocuments(query, collectionName, 3);
-    console.log("Results:", results);
-    res.status(200).json({ results });
-  } catch (error) {
-    console.error("Error querying documents:", error);
-    res.status(500).json({ error: "Failed to query documents" });
-  }
-});
-
 // the chat endpoint
 app.post("/chat/", async (req: Request, res: Response) => {
   try {
     const { message } = req.body;
-    const results = await queryDocuments(message, "wellness check", 1);
-    console.log("content::", results[0].pageContent);
+  
     const inputMessage = new HumanMessage({ content: message });
     const config = {
       configurable: { thread_id: "2" },
@@ -110,15 +115,7 @@ app.post("/chat/", async (req: Request, res: Response) => {
       config
     );
 
-    let finalResponse =
-      streamResults.messages[streamResults.messages.length - 1];
-    // for await (const output of streamResults) {
-    //   // console.log("Streaming Output::",output)
-    //     if (!output?.__end__ && output.messages) {
-    //         const lastMessage = output.messages[output.messages.length - 1];
-    //         finalResponse = lastMessage.content;
-    //     }
-    // }
+    let finalResponse = streamResults.messages[streamResults.messages.length - 1];
 
     console.log("Final Response::", finalResponse);
     res.json({ response: finalResponse.content });

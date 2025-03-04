@@ -20,11 +20,13 @@ export async function queryDocuments(
   collectionName: string = "documents",
   k = 3
 ) {
+
+  console.log("qdrant url::", process.env.QDRANT_URL);
   const vectorStore = await QdrantVectorStore.fromExistingCollection(
     embeddings,
     {
       url: process.env.QDRANT_URL,
-      apiKey: process.env.QDRANT_API_KEY,
+      // apiKey: process.env.QDRANT_API_KEY,
       collectionName: collectionName,
     }
   );
