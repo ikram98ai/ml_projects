@@ -2,16 +2,17 @@ import { DynamicStructuredTool } from "@langchain/core/tools";
 import { z } from "zod";
 import { queryDocuments } from "./rag";
 
+
 export const semanticSearchTool = new DynamicStructuredTool({
   name: "semantic_search",
   description: "smeantic search in the given collection with the given query.",
   schema: z.object({
     query: z
       .string()
-      .describe("This is a red flag detected by wellness check agent"),
+      .describe("this is the query to search in the collection"),
     collection: z
-      .string()
-      .describe("This is a red flag detected by wellness check agent"),
+      .string().default("health_documents")
+      .describe("this is the collection name to search in by default it is health_documents"),
   }),
   func: async ({ query, collection }) => {
     console.log(
