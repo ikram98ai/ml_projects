@@ -39,5 +39,6 @@ Follow these steps to set up and start the project:
 You should now have the project running locally.
 
  **Agent Architecture**
+ 
 ![HealthJay Agent Architecture](https://github.com/ikram98ai/healthjay_agent/blob/main/imgs/HealthJay%20Agent%20Architecture.png)
 
