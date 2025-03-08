@@ -36,4 +36,6 @@ Follow these steps to set up and start the project:
     npm run start
     ```
 
+![HealthJay Agent Architecture](https://github.com/ikram98ai/healthjay_agent/blob/main/imgs/HealthJay%20Agent%20Architecture.png)
+
 You should now have the project running locally.
