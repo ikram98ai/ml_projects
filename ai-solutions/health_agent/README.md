@@ -11,8 +11,8 @@ Follow these steps to set up and start the project:
 
 1. **Clone the repository:**
     ```bash
-    git clone https://github.com/ikram98ai/healthjay_agent.git
-    cd healthjay_agent
+    git clone https://github.com/ikram98ai/health_agent.git
+    cd health_agent
     ```
 
 2. **Install dependencies:**
@@ -40,5 +40,5 @@ You should now have the project running locally.
 
  **Agent Architecture**
  
-![HealthJay Agent Architecture](https://github.com/ikram98ai/healthjay_agent/blob/main/imgs/HealthJay%20Agent%20Architecture.png)
+![Agent Architecture](https://github.com/ikram98ai/health_agent/blob/main/imgs/Agent%20Architecture.png)
 
