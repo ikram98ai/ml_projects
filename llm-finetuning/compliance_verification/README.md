@@ -31,7 +31,7 @@ apperals_verification/
 ### 1. Prerequisites
 - AWS Account with appropriate permissions
 - GitHub repository
-- OpenAI API key
+- Gemini API key
 - Pinecone API key
 
 ### 2. AWS Permissions Required
@@ -46,7 +46,7 @@ Your AWS IAM user/role needs these permissions:
 Add these secrets to your GitHub repository:
 - `AWS_ACCESS_KEY_ID`: Your AWS access key
 - `AWS_SECRET_ACCESS_KEY`: Your AWS secret key
-- `OPENAI_API_KEY`: Your OpenAI API key
+- `GEMINI_API_KEY`: Your Gemini API key
 - `PINECONE_API_KEY`: Your Pinecone API key
 
 
@@ -88,7 +88,7 @@ make deploy
 make install
 
 # Set environment variable
-export OPENAI_API_KEY=your_key_here
+export GEMINI_API_KEY=your_key_here
 
 # Run the application
 make dev
@@ -109,7 +109,7 @@ make docker
 1. **Cold starts**: First request may be slower
 2. **Memory limits**: Adjust Lambda memory if needed
 3. **Timeout**: Increase Lambda timeout for longer operations
-4. **API limits**: Monitor OpenAI API usage and rate limits
+4. **API limits**: Monitor Gemini API usage and rate limits
 
 ## Cost Optimization
 - Lambda: Pay only for requests and compute time
@@ -118,7 +118,7 @@ make docker
 - CloudWatch: Log retention set to 14 days
 
 ## Security Best Practices
-- OpenAI and Pinecone API keys stored as environment variable
+- Gemini and Pinecone API keys stored as environment variable
 - IAM roles with minimal permissions
 - CORS configured for API Gateway
 - Container scanning enabled in ECR

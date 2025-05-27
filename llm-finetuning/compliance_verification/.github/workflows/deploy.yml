@@ -85,7 +85,7 @@ jobs:
       run: |
         terraform plan \
           -var="image_tag=${{ github.sha }}" \
-          -var="openai_api_key=${{ secrets.OPENAI_API_KEY }}" \
+          -var="gemini_api_key=${{ secrets.GEMINI_API_KEY }}" \
           -out=tfplan
       working-directory: ./terraform
 

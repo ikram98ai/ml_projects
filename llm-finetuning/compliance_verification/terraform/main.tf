@@ -111,7 +111,7 @@ resource "aws_lambda_function" "fastapi_lambda" {
 
   environment {
     variables = {
-      OPENAI_API_KEY = var.openai_api_key
+      GEMINI_API_KEY = var.gemini_api_key
     }
   }
 
