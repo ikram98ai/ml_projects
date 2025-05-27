@@ -22,10 +22,6 @@ app.add_middleware(
 async def root():
     return {"message": "FastAPI + OpenAI Lambda App is running!"}
 
-@app.get("/health")
-async def health_check():
-    return {"status": "healthy", "service": "fastapi-lambda"}
-
 
 @app.post("/compliance")
 async def compliance_verification(urls:List[str]):
