@@ -1,5 +1,5 @@
 from agents import Agent, Runner, AsyncOpenAI, OpenAIChatCompletionsModel, function_tool, ModelSettings
-from rag import get_index, query_index
+from ai.rag import get_index, query_index
 from pydantic import BaseModel, model_validator
 from typing import  Literal
 import asyncio, os, base64, requests
@@ -81,7 +81,7 @@ def download_and_encode_image(url: str) -> str:
     else:
         raise Exception(f"Failed to download image: {response.status_code}")
 
-async def main(urls):
+async def verifier_agent_runner(urls):
     # Convert URLs to base64 data URIs and create content list
     content_list = []
     
@@ -107,8 +107,8 @@ async def main(urls):
             "content": "Review this apparel design information for compliance with licensing rules. Provide compliance status and violation reason, if any.",
         },
     ])
-    print(result.final_output)
+    return result.final_output
 
 if __name__ == "__main__":
     urls = ["https://res.cloudinary.com/dsnai3oon/image/upload/v1740658670/cropped_images/9a3003a295bf13d10d2e1f0f7091e245_1740658669.jpg"]
-    asyncio.run(main(urls))
+    asyncio.run(verifier_agent_runner(urls))

@@ -5,3 +5,5 @@ python-docx==1.1.2
 python-dotenv==1.1.0
 openai-agents==0.0.16
 litellm==1.71.1
+fastapi==0.115.12
+mangum==0.19.0
