@@ -10,16 +10,17 @@ dev:
 
 docker: 
 	@echo "Building Docker image..."
-	sudo docker build -t apparel-lambda .
+	docker build -t apparel-lambda .
 
 	@echo "Running Docker container..."
-	sudo docker run -p 8080:8080 -e GEMINI_API_KEY=${GEMINI_API_KEY} -e PINECONE_API_KEY=${PINECONE_API_KEY} apparel-lambda
+	docker run -p 8080:8080 -e GEMINI_API_KEY=${GEMINI_API_KEY} -e PINECONE_API_KEY=${PINECONE_API_KEY} apparel-lambda
 
 deploy:
 	@echo "Deploying to AWS Lambda..."
-	cd terraform
-	terraform init
-	terraform plan -var="gemini_api_key=${GEMINI_API_KEY}" -var="pinecone_api_key=${PINECONE_API_KEY}"
-	terraform apply
-	cd ..
+	terraform -chdir=terraform init
+	terraform -chdir=terraform plan -var="gemini_api_key=${GEMINI_API_KEY}" -var="pinecone_api_key=${PINECONE_API_KEY}"
+	terraform -chdir=terraform apply -var="gemini_api_key=${GEMINI_API_KEY}" -var="pinecone_api_key=${PINECONE_API_KEY}"
 	
+destroy:
+	@echo "Destroying AWS resources..."
+	terraform -chdir=terraform destroy -var="gemini_api_key=${GEMINI_API_KEY}" -var="pinecone_api_key=${PINECONE_API_KEY}"
