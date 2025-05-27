@@ -8,8 +8,8 @@ on:
 
 env:
   AWS_REGION: us-east-1
-  ECR_REPOSITORY: fastapi-openai-app
-  LAMBDA_FUNCTION_NAME: fastapi-openai-app
+  ECR_REPOSITORY: apparel-fastapi-openai-app
+  LAMBDA_FUNCTION_NAME: apparel-fastapi-openai-app
 
 jobs:
   test:
