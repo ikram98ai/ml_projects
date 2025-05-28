@@ -2,8 +2,10 @@ from fastapi import FastAPI, UploadFile, HTTPException,File
 from fastapi.middleware.cors import CORSMiddleware
 from mangum import Mangum
 from typing import List
-import base64, logging
+import logging
 from ai.ai_agents import compliance_agent_runner, trademark_agent_runner
+from ai.rag import get_index, upsert_data
+from utils import get_base64_urls, get_docx_contents
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -17,24 +19,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
-async def get_base64_urls(images: List[UploadFile] ) -> str:
-    base64_urls = []
-    # If UploadFile instances are provided, convert to base64
-    logger.info("Processing images as UploadFile instances.")
-    for file in images:
-        try:
-            logger.info(f"Processing file: {file.filename}")
-            content = await file.read()
-            media_type = file.content_type or 'image/jpeg'
-            base64_image = base64.b64encode(content).decode('utf-8')
-            base64_urls.append(f"data:{media_type};base64,{base64_image}")
-
-        except Exception as e:
-            logger.error(f"Error processing file {file.filename}: {e}")
-            raise HTTPException(400, f"Error processing file {file.filename}: {str(e)}")
-            
-    return base64_urls
 
 @app.get("/")
 async def root():
@@ -67,6 +51,23 @@ async def trademark_detection(images: List[UploadFile] = File(..., description="
         logger.error(f"Error during trademark detection: {e}")
         raise HTTPException(500,str(e))
     return {"output": output }
+
+
+@app.post("/upsert")
+async def upsert_into_pinecone(docs: List[UploadFile] = File(..., description="Upload one or more docx files to upsert into the pinecone index.")):
+    try:
+        contents = await get_docx_contents(docs)
+        index = get_index()
+
+        output = upsert_data(index, contents)
+
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        logger.error(f"Error during upserting data to pinecone index: {e}")
+        raise HTTPException(500,str(e))
+    return {"output": output }
+
 
 
 handler = Mangum(app)

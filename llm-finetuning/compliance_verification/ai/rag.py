@@ -79,11 +79,12 @@ def upsert_data(index, contents: list[str]) -> None:
                 meta.append({"Content": content})
             # Upsert the batch into Pinecone.
             vectors = list(zip(ids_batch, embeds, meta))
-            index.upsert(vectors=vectors)
+            res = index.upsert(vectors=vectors)
         logger.info("Upsert completed successfully.")
+        return f"Upsert {len(contents)} files, completed successfully."
     except Exception as e:
         logger.error(f"Error during upsert: {e}")
-        raise f"Error during upsert: {e}"
+        return f"Error during upsert: {e}"
 
 
 def query_index(index, query_text)-> str:
