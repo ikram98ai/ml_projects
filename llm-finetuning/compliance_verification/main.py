@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, HTTPException
+from fastapi import FastAPI, UploadFile, HTTPException,File
 from fastapi.middleware.cors import CORSMiddleware
 from mangum import Mangum
 from typing import List
@@ -42,9 +42,9 @@ async def root():
 
 
 @app.post("/compliance")
-async def compliance_verification(images: List[UploadFile]):
+async def compliance_verification(images: List[UploadFile] = File(..., description="Upload one or two image files for compliance verification.")):
     try:
-        base64_urls = await get_base64_urls(images)
+        base64_urls = await get_base64_urls(images[:2])
         output = await compliance_agent_runner(base64_urls)
 
     except HTTPException as e:
@@ -52,15 +52,13 @@ async def compliance_verification(images: List[UploadFile]):
     except Exception as e:
         logger.error(f"Error during compliance verification: {e}")
         raise HTTPException(500,str(e))
-    return {
-        "output": output
-    }
+    return { "output": output }
 
 
 @app.post("/trademark")
-async def trademark_detection(images: List[UploadFile]):
+async def trademark_detection(images: List[UploadFile] = File(..., description="Upload one or two image files for trademark detection.")):
     try:
-        base64_urls = await get_base64_urls(images)
+        base64_urls = await get_base64_urls(images[:2])
         output = await trademark_agent_runner(base64_urls)
 
     except HTTPException as e:
@@ -68,9 +66,7 @@ async def trademark_detection(images: List[UploadFile]):
     except Exception as e:
         logger.error(f"Error during trademark detection: {e}")
         raise HTTPException(500,str(e))
-    return {
-        "output": output
-    }
+    return {"output": output }
 
 
 handler = Mangum(app)

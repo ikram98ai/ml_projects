@@ -81,15 +81,6 @@ class TrademarkOutput(BaseModel):
     trademark_detected: Literal["Yes", "No"]
     organization: str | None
 
-    @model_validator(mode='after')
-    def validate_trademark_detection(self) -> 'TrademarkOutput':
-        if self.trademark_detected == "No" and self.organization is not None:
-            raise ValueError("organization must be None when trademark_detected is 'No'")
-        if self.trademark_detected == "Yes" and not self.organization:
-            raise ValueError("organization must be a non-empty string when trademark_detected is 'Yes'")
-        return self
-  
-
 
 trademark_instruction = """You are an expert in trademark identification for apparel designs. Your task is to analyze images of apparel and determine
 if they contain licensed trademarks such as Greek organization letters (fraternities/sororities) or collegiate/university marks. Your response
