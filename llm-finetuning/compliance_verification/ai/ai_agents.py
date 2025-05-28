@@ -2,7 +2,7 @@ from agents import Agent, Runner, AsyncOpenAI, OpenAIChatCompletionsModel, funct
 from ai.rag import get_index, query_index
 from pydantic import BaseModel, model_validator
 from typing import  Literal
-import asyncio, os, base64, requests
+import asyncio, os
 
 gemini_client = AsyncOpenAI(
     base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
@@ -14,42 +14,16 @@ model = OpenAIChatCompletionsModel(
     model="gemini-2.0-flash"
 )
 
-def download_and_encode_image(url: str) -> str:
-    """Download image from URL and encode it as base64."""
-    response = requests.get(url)
-    if response.status_code == 200:
-        image_data = response.content
-        # Detect image format from URL or content-type
-        content_type = response.headers.get('content-type', 'image/jpeg')
-        if 'jpeg' in content_type or 'jpg' in url.lower():
-            media_type = 'image/jpeg'
-        elif 'png' in content_type or 'png' in url.lower():
-            media_type = 'image/png'
-        elif 'webp' in content_type or 'webp' in url.lower():
-            media_type = 'image/webp'
-        else:
-            media_type = 'image/jpeg'  # default
-        
-        base64_image = base64.b64encode(image_data).decode('utf-8')
-        return f"data:{media_type};base64,{base64_image}"
-    else:
-        raise Exception(f"Failed to download image: {response.status_code}")
 
-def get_content_list(urls):
-        # Convert URLs to base64 data URIs and create content list
+def get_content_list(base64_urls: list[str]):
     content_list = []
     
-    for url in urls:
-        try:
-            base64_data_uri = download_and_encode_image(url)
-            content_list.append({
-                "type": "input_image", 
-                "detail": "auto", 
-                "image_url": base64_data_uri
-            })
-        except Exception as e:
-            print(f"Error processing image {url}: {e}")
-            return
+    for base64_data_uri in base64_urls:
+        content_list.append({
+            "type": "input_image", 
+            "detail": "auto", 
+            "image_url": base64_data_uri
+        })
     return content_list
 
 #############################################################Compliance Verification Agent#############################################################
@@ -86,12 +60,14 @@ compliance_agent = Agent(
     
 )
 
-async def compliance_agent_runner(urls):
+
+
+async def compliance_agent_runner(base64_urls: list[str]):
 
     result = await Runner.run(compliance_agent, input=[
         {
             "role": "user",
-            "content": get_content_list(urls),
+            "content": get_content_list(base64_urls),
         }, {
             "role": "user",
             "content": "Review this apparel design information for compliance with licensing rules. Provide compliance status and violation reason, if any.",
@@ -128,12 +104,12 @@ trademark_agent = Agent(
     instructions=trademark_instruction,    
 )
 
-async def trademark_agent_runner(urls):
+async def trademark_agent_runner(base64_urls: list[str]):
     
     result = await Runner.run(trademark_agent, input=[
         {
             "role": "user",
-            "content": get_content_list(urls),
+            "content": get_content_list(base64_urls),
         },{
             "role": "user",
             "content": "Examine these apparel images and identify if they contain licensed marks or Greek letters. If yes, name the Greek organization or university associated.",

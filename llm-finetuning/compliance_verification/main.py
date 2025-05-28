@@ -1,9 +1,9 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from mangum import Mangum
 from typing import List
+import base64, logging
 from ai.ai_agents import compliance_agent_runner, trademark_agent_runner
-import logging
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -18,35 +18,59 @@ app.add_middleware(
 )
 
 
+async def get_base64_urls(images: List[UploadFile] ) -> str:
+    base64_urls = []
+    # If UploadFile instances are provided, convert to base64
+    logger.info("Processing images as UploadFile instances.")
+    for file in images:
+        try:
+            logger.info(f"Processing file: {file.filename}")
+            content = await file.read()
+            media_type = file.content_type or 'image/jpeg'
+            base64_image = base64.b64encode(content).decode('utf-8')
+            base64_urls.append(f"data:{media_type};base64,{base64_image}")
+
+        except Exception as e:
+            logger.error(f"Error processing file {file.filename}: {e}")
+            raise HTTPException(400, f"Error processing file {file.filename}: {str(e)}")
+            
+    return base64_urls
+
 @app.get("/")
 async def root():
-    return {"message": "FastAPI + OpenAI Lambda App is running!"}
+    return {"message": "Welcome to Fresh Prints' app!"}
 
 
 @app.post("/compliance")
-async def compliance_verification(urls:List[str]):
-    logger.info(f"Received URLs: {urls}")
+async def compliance_verification(images: List[UploadFile]):
     try:
-        output = await compliance_agent_runner(urls)
+        base64_urls = await get_base64_urls(images)
+        output = await compliance_agent_runner(base64_urls)
+
+    except HTTPException as e:
+        raise e
     except Exception as e:
         logger.error(f"Error during compliance verification: {e}")
-        return {"error": str(e)}
-    
+        raise HTTPException(500,str(e))
     return {
         "output": output
     }
 
+
 @app.post("/trademark")
-async def trademark_detection(urls:List[str]):
-    logger.info(f"Received URLs: {urls}")
+async def trademark_detection(images: List[UploadFile]):
     try:
-        output = await trademark_agent_runner(urls)
+        base64_urls = await get_base64_urls(images)
+        output = await trademark_agent_runner(base64_urls)
+
+    except HTTPException as e:
+        raise e
     except Exception as e:
         logger.error(f"Error during trademark detection: {e}")
-        return {"error": str(e)}
-    
+        raise HTTPException(500,str(e))
     return {
         "output": output
     }
+
 
 handler = Mangum(app)
