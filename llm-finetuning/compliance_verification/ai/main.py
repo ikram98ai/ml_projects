@@ -1,18 +1,17 @@
 #%pip install datasets tqdm pandas pinecone openai python-docx--quiet
 
-from rag import get_docx, create_index, get_index, query_index
+from rag import get_data_from_dir, upsert_data, get_index, query_index
 import argparse
 
 def main(args):
+    index = get_index()
 
     # Load documents from the specified directory
     if args.upsert:
         print("Upsert data into the Pinecone index.")
-        df = get_docx("data")
-        index = create_index(df)
+        contents = get_data_from_dir("ai/data")
+        upsert_data(index, contents)
 
-    else:
-        index = get_index()
 
     print("Query the index for a specific document")
     query = input("Enter your query: ")
