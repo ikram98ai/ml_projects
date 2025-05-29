@@ -6,6 +6,7 @@ from pinecone import Pinecone
 from pinecone import ServerlessSpec
 from dotenv import load_dotenv
 import logging
+import argparse
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("rag_api")
@@ -100,3 +101,30 @@ def query_index(index, query_text)-> str:
         for m in res['matches']
     )
     return context
+
+
+
+def main(args):
+    index = get_index()
+
+    # Load documents from the specified directory
+    if args.upsert:
+        print("Upsert data into the Pinecone index.")
+        contents = get_data_from_dir("ai/data")
+        upsert_data(index, contents)
+
+
+    print("Query the index for a specific document")
+    query = input("Enter your query: ")
+    result = query_index(index, query)  
+    
+    print(result)
+
+
+if __name__ == "__main__":
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(description="RAG Compliance Document Processing")
+    parser.add_argument("--upsert", action="store_true", help="Upsert data into the index")
+    args = parser.parse_args()
+
+    main(args)
