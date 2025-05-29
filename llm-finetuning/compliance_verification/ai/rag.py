@@ -1,4 +1,3 @@
-#%pip install datasets tqdm pandas pinecone openai python-docx--quiet
 import os
 from docx import Document
 from openai import OpenAI
