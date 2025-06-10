@@ -13,6 +13,7 @@ apperals_verification/
 │   └── rag.py
 ├── terraform/
 │   ├── main.tf
+│   ├── backend.tf
 │   ├── variables.tf
 │   ├── outputs.tf
 │   └── terraform.tfvars
@@ -21,6 +22,7 @@ apperals_verification/
 ├── .gitignore
 ├── Dockerfile
 ├── main.py
+├── utils.py
 ├── makefile
 ├── README.md
 └── requirements.txt
@@ -58,7 +60,6 @@ make deploy
 ### 5. Deploy via GitHub Actions
 1. Push your code to the `main` branch
 2. GitHub Actions will automatically:
-   - Run tests
    - Build Docker image
    - Push to ECR
    - Deploy infrastructure with Terraform
@@ -73,7 +74,6 @@ make deploy
 - **IAM**: Least privilege access control
 
 ### CI/CD Pipeline
-- **Automated Testing**: Run tests on every push/PR
 - **Docker Build**: Multi-stage builds for optimization
 - **Infrastructure as Code**: Terraform for resource management
 - **Automated Deployment**: Deploy on merge to main
@@ -104,28 +104,3 @@ make docker
 ### CloudWatch Logs
 - Lambda logs: `/aws/lambda/apparel_verification_app`
 - API Gateway logs: `/aws/apigateway/apparel_verification_app`
-
-### Common Issues
-1. **Cold starts**: First request may be slower
-2. **Memory limits**: Adjust Lambda memory if needed
-3. **Timeout**: Increase Lambda timeout for longer operations
-4. **API limits**: Monitor Gemini API usage and rate limits
-
-## Cost Optimization
-- Lambda: Pay only for requests and compute time
-- API Gateway: Pay per million requests
-- ECR: Storage costs for container images
-- CloudWatch: Log retention set to 14 days
-
-## Security Best Practices
-- Gemini and Pinecone API keys stored as environment variable
-- IAM roles with minimal permissions
-- CORS configured for API Gateway
-- Container scanning enabled in ECR
-- No hardcoded secrets in code
-
-## Scaling Considerations
-- Lambda automatically scales to handle requests
-- API Gateway handles high traffic
-- Consider Lambda reserved concurrency for predictable workloads
-- Monitor costs and set billing alerts
