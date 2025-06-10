@@ -22,7 +22,7 @@ app.add_middleware(
 
 @app.get("/")
 async def root():
-    return {"message": "Welcome to Fresh Prints' APIs!"}
+    return {"message": "Welcome to Fresh Prints' APIs to verify complaince and detect trademark!"}
 
 
 @app.post("/compliance")
