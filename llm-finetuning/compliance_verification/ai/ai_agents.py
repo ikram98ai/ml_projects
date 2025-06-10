@@ -1,6 +1,6 @@
 from agents import Agent, Runner, AsyncOpenAI, OpenAIChatCompletionsModel, function_tool, ModelSettings
 from ai.rag import get_index, query_index
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel
 from typing import  Literal
 import asyncio, os
 
