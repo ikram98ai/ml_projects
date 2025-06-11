@@ -49,9 +49,9 @@ def pinecone_search_documents(query: str) -> str:
     logger.info(f"Result: {results} ")
     return results  
 
-class ComplianceOutput(BaseModel):
-    compliance_verification: Literal["Compliant", "Non-compliant"]
-    violation_reason: str | None
+# class ComplianceOutput(BaseModel):
+#     compliance_verification: Literal["Compliant", "Non-compliant"]
+#     violation_reason: str | None
 
 
 
@@ -68,9 +68,8 @@ compliance_agent = Agent(
     model="gpt-4o",
     tools= [pinecone_search_documents],
     instructions=compliance_instruction,
-    output_type=ComplianceOutput,
-    model_settings=ModelSettings(tool_choice="auto" ),
-    
+    # output_type=ComplianceOutput,
+    model_settings=ModelSettings(temperature=0.1),    
 )
 
 
@@ -90,9 +89,9 @@ async def compliance_agent_runner(base64_urls: list[str]):
 
 #############################################################Trademark Detection Agent#############################################################
 
-class TrademarkOutput(BaseModel):
-    trademark_detected: Literal["Yes", "No"]
-    organization: str | None
+# class TrademarkOutput(BaseModel):
+#     trademark_detected: Literal["Yes", "No"]
+#     organization: str | None
 
 
 trademark_instruction = """You are an expert in trademark identification for apparel designs. Your task is to analyze images of apparel and determine
@@ -105,9 +104,11 @@ trademark_agent = Agent(
     name="Trademark detector",
     # model= model,
     model="gpt-4o",
-    output_type= TrademarkOutput,
+    # output_type= TrademarkOutput,
     instructions=trademark_instruction,    
+    model_settings=ModelSettings(temperature=0.1),
 )
+
 
 async def trademark_agent_runner(base64_urls: list[str]):
     
