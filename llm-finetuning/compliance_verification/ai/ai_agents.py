@@ -42,7 +42,7 @@ def pinecone_search_documents(query: str) -> str:
     print(f"Querying index with: {query}")
     index = get_index()
     results = query_index(index, query)
-    print(f"Result: {results} ")
+    print(f"Search Result\n##Start## \n{results[:200]}...\n##End##")
     return results  
 
 # class ComplianceOutput(BaseModel):
@@ -65,7 +65,7 @@ compliance_agent = Agent(
     tools= [pinecone_search_documents],
     instructions=compliance_instruction,
     # output_type=ComplianceOutput,
-    model_settings=ModelSettings(temperature=0.1),    
+    model_settings=ModelSettings(tool_choice="auto", temperature=0.1),    
 )
 
 
