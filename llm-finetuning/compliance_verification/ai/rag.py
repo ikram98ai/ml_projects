@@ -5,6 +5,7 @@ from pinecone import Pinecone
 from pinecone import ServerlessSpec
 from dotenv import load_dotenv
 import argparse
+import traceback
 
 load_dotenv()
 
@@ -97,6 +98,7 @@ def query_index(index, query_text)-> str:
         print(f"Query embedding created successfully with length {len(query_embedding)}")
     except Exception as e:
         print(f"Failed to create query embedding: {str(e)}")
+        traceback.print_exc()
         raise ConnectionError(f"Embedding generation failed: {str(e)}")
     
     # Query the index and return top_k matches.
