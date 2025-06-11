@@ -2,14 +2,10 @@ from fastapi import FastAPI, UploadFile, HTTPException,File
 from fastapi.middleware.cors import CORSMiddleware
 from mangum import Mangum
 from typing import List
-import logging
 from ai.ai_agents import compliance_agent_runner, trademark_agent_runner
 from ai.rag import get_index, upsert_data
 from utils import get_base64_urls, get_docx_contents
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
 app = FastAPI()
 app.add_middleware(
@@ -34,7 +30,7 @@ async def compliance_verification(images: List[UploadFile] = File(..., descripti
     except HTTPException as e:
         raise e
     except Exception as e:
-        logger.error(f"Error during compliance verification: {e}")
+        print(f"Error during compliance verification: {e}")
         raise HTTPException(500,str(e))
     return { "output": output }
 
@@ -48,7 +44,7 @@ async def trademark_detection(images: List[UploadFile] = File(..., description="
     except HTTPException as e:
         raise e
     except Exception as e:
-        logger.error(f"Error during trademark detection: {e}")
+        print(f"Error during trademark detection: {e}")
         raise HTTPException(500,str(e))
     return {"output": output }
 
@@ -64,7 +60,7 @@ async def upsert_into_pinecone(docs: List[UploadFile] = File(..., description="U
     except HTTPException as e:
         raise e
     except Exception as e:
-        logger.error(f"Error during upserting data to pinecone index: {e}")
+        print(f"Error during upserting data to pinecone index: {e}")
         raise HTTPException(500,str(e))
     return {"output": output }
 

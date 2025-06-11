@@ -3,10 +3,6 @@ from ai.rag import get_index, query_index
 from pydantic import BaseModel
 from typing import  Literal
 import asyncio, os
-import logging
-
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("agents")
 
 
 # gemini_client = AsyncOpenAI(
@@ -43,10 +39,10 @@ def pinecone_search_documents(query: str) -> str:
     Returns:
         str: The search results from the vector database.
     """
-    logger.info(f"Querying index with: {query}")
+    print(f"Querying index with: {query}")
     index = get_index()
     results = query_index(index, query)
-    logger.info(f"Result: {results} ")
+    print(f"Result: {results} ")
     return results  
 
 # class ComplianceOutput(BaseModel):
@@ -85,6 +81,7 @@ async def compliance_agent_runner(base64_urls: list[str]):
             "content": "Review this apparel design information for compliance with licensing rules. Provide compliance status and violation reason, if any.",
         },
     ])
+    print(f"Compliance verification result: {result.final_output}")
     return result.final_output
 
 #############################################################Trademark Detection Agent#############################################################
@@ -121,6 +118,7 @@ async def trademark_agent_runner(base64_urls: list[str]):
             "content": "Examine these apparel images and identify if they contain licensed marks or Greek letters. If yes, name the Greek organization or university associated.",
         },
     ])
+    print(f"Trademark detection result: {result.final_output}")
     return result.final_output
 
 

@@ -4,11 +4,7 @@ from openai import OpenAI
 from pinecone import Pinecone
 from pinecone import ServerlessSpec
 from dotenv import load_dotenv
-import logging
 import argparse
-
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("rag_api")
 
 load_dotenv()
 
@@ -27,7 +23,7 @@ def get_index():
 
     # Create the index if it doesn't already exist.
     if PINECONE_INDEX not in pc.list_indexes().names():
-        logger.info(f"Creating Pinecone index: {PINECONE_INDEX}")
+        print(f"Creating Pinecone index: {PINECONE_INDEX}")
         # Define the Pinecone serverless specification.
         spec = ServerlessSpec(cloud="aws", region=PINECONE_REGION)
         pc.create_index(
@@ -61,7 +57,7 @@ def get_data_from_dir(data_dir)->list[str]:
     return contents
 
 def upsert_data(index, contents: list[str]) -> None:
-    logger.info(f"Upserting data with length {len(contents)} into Pinecone index...")
+    print(f"Upserting data with length {len(contents)} into Pinecone index...")
     try:
         batch_size = 32
         for i in range(0, len(contents), batch_size):
@@ -80,10 +76,10 @@ def upsert_data(index, contents: list[str]) -> None:
             # Upsert the batch into Pinecone.
             vectors = list(zip(ids_batch, embeds, meta))
             res = index.upsert(vectors=vectors)
-        logger.info("Upsert completed successfully.")
+        print("Upsert completed successfully.")
         return f"Upsert {len(contents)} files, completed successfully."
     except Exception as e:
-        logger.error(f"Error during upsert: {e}")
+        print(f"Error during upsert: {e}")
         return f"Error during upsert: {e}"
 
 
