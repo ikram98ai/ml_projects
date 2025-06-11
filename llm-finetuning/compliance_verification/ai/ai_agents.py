@@ -3,7 +3,9 @@ from ai.rag import get_index, query_index
 from pydantic import BaseModel
 from typing import  Literal
 import asyncio, os
+from dotenv import load_dotenv
 
+load_dotenv()
 
 # gemini_client = AsyncOpenAI(
 #     base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
@@ -39,7 +41,7 @@ def pinecone_search_documents(query: str) -> str:
     Returns:
         str: The search results from the vector database.
     """
-    print(f"Querying index with: {query}")
+    print(f"Querying index with: ### {query}")
     index = get_index()
     results = query_index(index, query)
     print(f"Search Result\n##Start## \n{results[:200]}...\n##End##")
