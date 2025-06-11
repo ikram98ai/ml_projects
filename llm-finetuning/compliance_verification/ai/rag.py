@@ -35,7 +35,7 @@ def get_index():
 
     # Connect to the index.
     index = pc.Index(PINECONE_INDEX)
-
+    print('Connected to Pinecone index:', PINECONE_INDEX,'\n', index)
     return index
 
 
@@ -87,7 +87,7 @@ def query_index(index, query_text)-> str:
     # Generate an embedding for the query.
 
     query_embedding = client.embeddings.create(input=query_text, model=EMBED_MODEL).data[0].embedding
-
+    print(f"Querying index with embedding: {query_embedding[:10]}...") 
     # Query the index and return top 5 matches.
     res = index.query(vector=[query_embedding], top_k=3, include_metadata=True)
 
