@@ -31,17 +31,12 @@ def pinecone_search_documents(query: str) -> str:
     """
     try:
         if not query.strip():
-            raise ValueError("Query cannot be empty")
-            
+            raise ValueError("Query cannot be empty")      
         print(f"Querying index with: {query}")
         index = get_index()
         results = query_index(index, query)
-        
-        preview = results[:200]
-        print(f"Search Result Preview:\n{preview}...")
-        
+        print(f"Search Result\n##Start## \n{results[:200]}...\n##End##")
         return results
-        
     except Exception as e:
         print(f"Error in pinecone_search_documents: {str(e)}")
         return f"Error searching documents: {str(e)}"

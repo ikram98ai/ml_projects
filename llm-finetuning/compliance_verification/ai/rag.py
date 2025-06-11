@@ -8,10 +8,9 @@ import argparse
 
 load_dotenv()
 
-client = OpenAI( base_url="https://generativelanguage.googleapis.com/v1beta/openai/", api_key=os.getenv("GEMINI_API_KEY"))
-
 
 # Initialize clients
+EMBED_MODEL_BASE_URL = os.getenv("EMBED_MODEL_BASE_URL","https://generativelanguage.googleapis.com/v1beta/openai/")
 EMBED_MODEL = os.getenv("EMBED_MODEL", "text-embedding-004")
 PINECONE_INDEX = os.getenv("PINECONE_INDEX", "apperal-compliance-index")
 EMBED_DIM = int(os.getenv("PINECONE_DIM", 768))
@@ -58,7 +57,9 @@ def get_data_from_dir(data_dir)->list[str]:
 
 def upsert_data(index, contents: list[str]) -> None:
     print(f"Upserting data with length {len(contents)} into Pinecone index...")
+
     try:
+        client = OpenAI( base_url=EMBED_MODEL_BASE_URL, api_key=os.getenv("GEMINI_API_KEY"))
         batch_size = 32
         for i in range(0, len(contents), batch_size):
             i_end = min(i + batch_size, len(contents))
@@ -86,6 +87,8 @@ def upsert_data(index, contents: list[str]) -> None:
 def query_index(index, query_text)-> str:
     # Generate an embedding for the query.
     try:
+        client = OpenAI( base_url=EMBED_MODEL_BASE_URL, api_key=os.getenv("GEMINI_API_KEY"))
+        print('Creating embeding with model:', EMBED_MODEL, client.base_url)
         query_embedding = client.embeddings.create(input=query_text, model=EMBED_MODEL).data[0].embedding
     except Exception as e:
         print(f"Failed to create query embedding: {str(e)}")
