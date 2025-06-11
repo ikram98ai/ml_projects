@@ -89,7 +89,12 @@ def query_index(index, query_text)-> str:
     try:
         client = OpenAI( base_url=EMBED_MODEL_BASE_URL, api_key=os.getenv("GEMINI_API_KEY"))
         print('Creating embeding with model:', EMBED_MODEL, client.base_url)
-        query_embedding = client.embeddings.create(input=query_text, model=EMBED_MODEL).data[0].embedding
+        response = client.embeddings.create(input=query_text, model=EMBED_MODEL)
+        print(f"Embedding generation response: {type(response)}")
+        if not response or not response.data or not response.data[0].embedding:
+            raise ValueError("Embedding generation returned no data.")
+        query_embedding = response.data[0].embedding
+        print(f"Query embedding created successfully with length {len(query_embedding)}")
     except Exception as e:
         print(f"Failed to create query embedding: {str(e)}")
         raise ConnectionError(f"Embedding generation failed: {str(e)}")
