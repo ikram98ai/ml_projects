@@ -34,6 +34,13 @@ variable "gemini_api_key" {
   sensitive   = true
 }
 
+variable "openai_api_key" {
+  description = "Openai API key"
+  type        = string
+  sensitive   = true
+}
+
+
 variable "pinecone_api_key" {
   description = "Pinecone API key"
   type        = string

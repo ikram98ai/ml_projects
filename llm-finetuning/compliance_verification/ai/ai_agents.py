@@ -3,16 +3,21 @@ from ai.rag import get_index, query_index
 from pydantic import BaseModel
 from typing import  Literal
 import asyncio, os
+import logging
 
-gemini_client = AsyncOpenAI(
-    base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
-    api_key=os.getenv("GEMINI_API_KEY")
-)
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("agents")
 
-model = OpenAIChatCompletionsModel(
-    openai_client=gemini_client,
-    model="gemini-2.0-flash"
-)
+
+# gemini_client = AsyncOpenAI(
+#     base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
+#     api_key=os.getenv("GEMINI_API_KEY")
+# )
+
+# model = OpenAIChatCompletionsModel(
+#     openai_client=gemini_client,
+#     model="gemini-2.0-flash"
+# )
 
 
 def get_content_list(base64_urls: list[str]):
@@ -38,14 +43,20 @@ def pinecone_search_documents(query: str) -> str:
     Returns:
         str: The search results from the vector database.
     """
-    print(f"Querying index with: {query}")
+    logger.info(f"Querying index with: {query}")
     index = get_index()
     results = query_index(index, query)
+    logger.info(f"Result: {results} ")
     return results  
+
+class ComplianceOutput(BaseModel):
+    compliance_verification: Literal["Compliant", "Non-compliant"]
+    violation_reason: str | None
+
 
 
 compliance_instruction = """You are a licensing compliance expert specifically for university and Greek organization apparel. 
-Your task is to evaluate designs against the established licensing guidelines of these specific organizations.
+Your task is to evaluate designs against the established licensing guidelines of these specific organizations by using `pinecone_search_documents` tool.
 Determine if a design meets all requirements or violates any rules. For each evaluation, you must respond in a strict two-line format: 
 first indicating 'Compliance Status: Compliant' or 'Compliance Status: Non-compliant', followed by 'Violation Reason:' with either 'None' for compliant designs or a brief explanation for non-compliant designs. 
 Never elaborate beyond this format. Base your evaluation solely on actual violations present in the image, not hypothetical concerns."""
@@ -53,9 +64,11 @@ Never elaborate beyond this format. Base your evaluation solely on actual violat
   
 compliance_agent = Agent(
     name="Compliance verifier",
-    model= model,
+    # model= model,
+    model="gpt-4o",
     tools= [pinecone_search_documents],
     instructions=compliance_instruction,
+    output_type=ComplianceOutput,
     model_settings=ModelSettings(tool_choice="auto" ),
     
 )
@@ -90,7 +103,8 @@ by 'Organization:' with either the specific organization/university name(s) iden
   
 trademark_agent = Agent(
     name="Trademark detector",
-    model= model,
+    # model= model,
+    model="gpt-4o",
     output_type= TrademarkOutput,
     instructions=trademark_instruction,    
 )

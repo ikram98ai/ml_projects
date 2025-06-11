@@ -13,7 +13,7 @@ docker:
 	docker build -t apparel-lambda .
 
 	@echo "Running Docker container..."
-	docker run -p 8080:8080 -e GEMINI_API_KEY=${GEMINI_API_KEY} -e PINECONE_API_KEY=${PINECONE_API_KEY} apparel-lambda
+	docker run -p 8080:8080 -e GEMINI_API_KEY=${GEMINI_API_KEY} -e -var="openai_api_key=${OPENAI_API_KEY}" -e PINECONE_API_KEY=${PINECONE_API_KEY} apparel-lambda
 
 tf_backend:
 	@echo "Create S3 bucket for Terraform state"
@@ -30,9 +30,9 @@ tf_backend:
 deploy:
 	@echo "Deploying to AWS Lambda..."
 	terraform -chdir=terraform init
-	terraform -chdir=terraform plan -var="gemini_api_key=${GEMINI_API_KEY}" -var="pinecone_api_key=${PINECONE_API_KEY}"
-	terraform -chdir=terraform apply -var="gemini_api_key=${GEMINI_API_KEY}" -var="pinecone_api_key=${PINECONE_API_KEY}"
+	terraform -chdir=terraform plan -var="gemini_api_key=${GEMINI_API_KEY}" -var="openai_api_key=${OPENAI_API_KEY}" -var="pinecone_api_key=${PINECONE_API_KEY}"
+	terraform -chdir=terraform apply -var="gemini_api_key=${GEMINI_API_KEY}" -var="openai_api_key=${OPENAI_API_KEY}" -var="pinecone_api_key=${PINECONE_API_KEY}"
 	
 destroy:
 	@echo "Destroying AWS resources..."
-	terraform -chdir=terraform destroy -var="gemini_api_key=${GEMINI_API_KEY}" -var="pinecone_api_key=${PINECONE_API_KEY}"
+	terraform -chdir=terraform destroy -var="gemini_api_key=${GEMINI_API_KEY}" -var="openai_api_key=${OPENAI_API_KEY}" -var="pinecone_api_key=${PINECONE_API_KEY}"

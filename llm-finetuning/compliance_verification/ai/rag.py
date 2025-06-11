@@ -16,7 +16,7 @@ client = OpenAI( base_url="https://generativelanguage.googleapis.com/v1beta/open
 
 
 # Initialize clients
-EMBED_MODEL = os.getenv("OPENAI_MODEL", "text-embedding-004")
+EMBED_MODEL = os.getenv("EMBED_MODEL", "text-embedding-004")
 PINECONE_INDEX = os.getenv("PINECONE_INDEX", "apperal-compliance-index")
 EMBED_DIM = int(os.getenv("PINECONE_DIM", 768))
 PINECONE_REGION = os.getenv("PINECONE_REGION", "us-east-1")
