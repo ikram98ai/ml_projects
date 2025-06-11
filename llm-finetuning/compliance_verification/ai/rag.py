@@ -85,11 +85,19 @@ def upsert_data(index, contents: list[str]) -> None:
 
 def query_index(index, query_text)-> str:
     # Generate an embedding for the query.
-
-    query_embedding = client.embeddings.create(input=query_text, model=EMBED_MODEL).data[0].embedding
-    print(f"Querying index with embedding: {query_embedding[:10]}...") 
-    # Query the index and return top 5 matches.
-    res = index.query(vector=[query_embedding], top_k=3, include_metadata=True)
+    try:
+        query_embedding = client.embeddings.create(input=query_text, model=EMBED_MODEL).data[0].embedding
+    except Exception as e:
+        print(f"Failed to create query embedding: {str(e)}")
+        raise ConnectionError(f"Embedding generation failed: {str(e)}")
+    
+    # Query the index and return top_k matches.
+    try:
+        res = index.query(vector=[query_embedding], top_k=3, include_metadata=True)
+    except Exception as e:
+        print(f"Pinecone query failed: {str(e)}")
+        raise ConnectionError(f"Query execution failed: {str(e)}")
+        
 
     context = "\n\n".join(
         f"Content: {m['metadata'].get('Content', '')}"
