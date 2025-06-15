@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+pinecone_index = get_index()
 
 def get_content_list(base64_urls: list[str]):
     content_list = []
@@ -33,8 +34,7 @@ def search_licensing_rules(query: str) -> str:
         if not query.strip():
             raise ValueError("Query cannot be empty")      
         print(f"Querying index with: {query}")
-        index = get_index()
-        results = query_index(index, query)
+        results = query_index(pinecone_index, query)
         print(f"Search Result\n##Start## \n{results[:200]}...\n##End##")
         return "`search_licensing_rules` tool's result:" + results
     except Exception as e:
