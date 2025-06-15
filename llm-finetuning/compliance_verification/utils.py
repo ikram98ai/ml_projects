@@ -8,7 +8,6 @@ from docx import Document
 async def get_base64_urls(images: List[UploadFile] ) -> str:
     base64_urls = []
     # If UploadFile instances are provided, convert to base64
-    print("Processing images as UploadFile instances.")
     for file in images:
         try:
             print(f"Processing file: {file.filename}")

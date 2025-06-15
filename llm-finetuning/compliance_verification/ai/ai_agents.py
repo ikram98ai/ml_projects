@@ -48,7 +48,7 @@ def search_licensing_rules(query: str) -> str:
 
 
 compliance_instruction = """You are a licensing compliance expert specifically for university and Greek organization apparel. 
-Your task is to complete the following steps for each apparel design images (back and front<) provided:
+Your task is to complete the following steps for each apparel design images provided:
 1. Detect either the apperal design is for a specific university or greek organization. 
 2. Evaluate designs against the following general rules for the detected GREEK ORGANIZATION or UNIVERSITY.
 3. Also evaluate designs against the established licensing guidelines of the detected GREEK ORGANIZATION or UNIVERSITY by using `search_licensing_rules` tool.
