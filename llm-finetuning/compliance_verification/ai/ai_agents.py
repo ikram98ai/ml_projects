@@ -21,7 +21,7 @@ def get_content_list(base64_urls: list[str]):
 
 
 @function_tool
-def pinecone_search_documents(query: str) -> str:
+def search_licensing_rules(query: str) -> str:
     """
     Search for relevant licensing rules using semantic query
     Args:
@@ -36,9 +36,9 @@ def pinecone_search_documents(query: str) -> str:
         index = get_index()
         results = query_index(index, query)
         print(f"Search Result\n##Start## \n{results[:200]}...\n##End##")
-        return results
+        return "`search_licensing_rules` tool's result:" + results
     except Exception as e:
-        print(f"Error in pinecone_search_documents: {str(e)}")
+        print(f"Error in search_licensing_rules: {str(e)}")
         return f"Error searching documents: {str(e)}"
 
 # class ComplianceOutput(BaseModel):
@@ -48,15 +48,16 @@ def pinecone_search_documents(query: str) -> str:
 
 
 compliance_instruction = """You are a licensing compliance expert specifically for university and Greek organization apparel. 
-Your task is:
-1. To find either the apperal design is for a specific university or a specific greek organization. 
-2. Evaluate designs against the following general rules for the found GREEK ORGANIZATIONS or UNIVERSITIES.
-3. Also evaluate designs against the established licensing guidelines of these specific organizations or universities by using `pinecone_search_documents` tool.
-Determine if a design meets all requirements or violates any rules. For each evaluation, you must respond in a strict two-line format: 
-first indicating 'Compliance Status: Compliant' or 'Compliance Status: Non-compliant', followed by 'Violation Reason:' with either 'None' for compliant designs or a brief explanation for non-compliant designs. 
+Your task is to complete the following steps for each apparel design images (back and front<) provided:
+1. Detect either the apperal design is for a specific university or greek organization. 
+2. Evaluate designs against the following general rules for the detected GREEK ORGANIZATION or UNIVERSITY.
+3. Also evaluate designs against the established licensing guidelines of the detected GREEK ORGANIZATION or UNIVERSITY by using `search_licensing_rules` tool.
+4. Analyze the results from the `search_licensing_rules` tool and determine if a design meets all requirements or violates any rules. 
+For each evaluation, you must respond in a strict two-line format: 
+First indicating 'Compliance Status: Compliant' or 'Compliance Status: Non-compliant', followed by 'Violation Reason:' with either 'None' for compliant designs or a brief explanation for non-compliant designs. 
 Never elaborate beyond this format. Base your evaluation solely on actual violations present in the image, not hypothetical concerns.
 
-GENERAL RULES FOR GREEK ORGANIZATIONS:
+GENERAL RULES FOR DETECTED GREEK ORGANIZATION:
 General rejection reasons on Affinity
 Rejected General Themes
     drinking games
@@ -93,7 +94,7 @@ Brands we CAN’T DO AT ALL:
     OVO
     Life is Good
 
-GENERAL RULES FOR UNIVERSITIES:
+GENERAL RULES FOR DETECTED UNIVERSITY:
 Standard Collegiate Rules
 On any design using the listed verbiage and/or logos on the SPA, please note the following -
 1. No direct or indirect references to alcohol - including altered alcohol brands/themes, images of bongs,
@@ -125,7 +126,7 @@ compliance_agent = Agent(
     name="Compliance verifier",
     # model= model,
     model="gpt-4o",
-    tools= [pinecone_search_documents],
+    tools= [search_licensing_rules],
     instructions=compliance_instruction,
     # output_type=ComplianceOutput,
     model_settings=ModelSettings(tool_choice="auto", temperature=0.1),    
