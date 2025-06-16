@@ -87,6 +87,8 @@ def upsert_data(index, contents: list[str]) -> None:
 
 def query_index(index, query_text)-> str:
     # Generate an embedding for the query.
+    print(f"Querying index with: {query_text}")
+
     try:
         response = client.embeddings.create(input=query_text, model=EMBED_MODEL)
         if not response or not response.data or not response.data[0].embedding:
@@ -105,11 +107,15 @@ def query_index(index, query_text)-> str:
         raise ConnectionError(f"Query execution failed: {str(e)}")
         
 
-    context = "\n\n".join(
-        f"Content: {m['metadata'].get('Content', '')}"
-        for m in res['matches']
-    )
-    return context
+    context ="" 
+    rag_score=0
+    for i,m in enumerate(res['matches']):
+        content = m['metadata'].get('Content', '')
+        score = m['score']
+        context+= f"License #{i+1}; Content: {content}\n"
+        print(f"License #{i+1}: Query matching score: {score}; Content: {content[:100]}\n")
+        rag_score+=score
+    return f"Confidence score: {int(rag_score/(i+1)*100)}\n{context}"
 
 
 

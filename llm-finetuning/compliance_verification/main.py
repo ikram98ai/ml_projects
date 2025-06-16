@@ -18,7 +18,7 @@ app.add_middleware(
 
 @app.get("/")
 async def root():
-    return {"message": "Welcome to Fresh Prints' APIs(v2.3) to verify complaince and detect trademark!"}
+    return {"message": "Welcome to Fresh Prints' APIs(v2.4) to verify complaince and detect trademark!"}
 
 
 @app.post("/compliance")
@@ -32,7 +32,7 @@ async def compliance_verification(images: List[UploadFile] = File(..., descripti
     except Exception as e:
         print(f"Error during compliance verification: {e}")
         raise HTTPException(500,str(e))
-    return { "output": output }
+    return output
 
 
 @app.post("/trademark")
@@ -62,7 +62,7 @@ async def upsert_into_pinecone(docs: List[UploadFile] = File(..., description="U
     except Exception as e:
         print(f"Error during upserting data to pinecone index: {e}")
         raise HTTPException(500,str(e))
-    return {"output": output }
+    return output
 
 
 

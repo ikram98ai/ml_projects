@@ -1,6 +1,8 @@
 from agents import Agent, Runner, function_tool, ModelSettings
 from ai.rag import get_index, query_index
 from dotenv import load_dotenv
+from pydantic import BaseModel, Field
+from typing import Literal
 
 load_dotenv()
 
@@ -32,23 +34,22 @@ def search_licensing_rules(query: str) -> str:
     """
     try:
         if not query.strip():
-            raise ValueError("Query cannot be empty")      
-        print(f"Querying index with: {query}")
+            return "Query cannot be empty"   
         results = query_index(pinecone_index, query)
-        print(f"Search Result\n##Start## \n{results[:200]}...\n##End##")
         return "`search_licensing_rules` tool's result:" + results
     except Exception as e:
         print(f"Error in search_licensing_rules: {str(e)}")
         return f"Error searching documents: {str(e)}"
 
-# class ComplianceOutput(BaseModel):
-#     compliance_verification: Literal["Compliant", "Non-compliant"]
-#     violation_reason: str | None
+class ComplianceOutput(BaseModel):
+    compliance_status: Literal["Compliant", "Non-compliant"]
+    violation_reason: str | None
+    confidence_score: int = Field(description="Confidence score from `search_licensing_rules` tool or around 99 if `search_licensing_rules` tool is not used.")
 
 
 
 compliance_instruction = """You are a licensing compliance expert specifically for university and Greek organization apparel. 
-Your task is to complete the following steps for each apparel design images provided:
+Your task is to complete the following instructions step by step for each apparel design's images provided:
 1. Detect either the apperal design is for a specific university or greek organization. 
 2. Evaluate designs against the following general rules for the detected GREEK ORGANIZATION or UNIVERSITY.
 3. Also evaluate designs against the established licensing guidelines of the detected GREEK ORGANIZATION or UNIVERSITY by using `search_licensing_rules` tool.
@@ -124,11 +125,10 @@ names, bowl names, images of NCAA stadiums, championship trophies/cups, etc.
   
 compliance_agent = Agent(
     name="Compliance verifier",
-    # model= model,
     model="gpt-4o",
     tools= [search_licensing_rules],
     instructions=compliance_instruction,
-    # output_type=ComplianceOutput,
+    output_type=ComplianceOutput,
     model_settings=ModelSettings(tool_choice="auto", temperature=0.1),    
 )
 
@@ -150,9 +150,9 @@ async def compliance_agent_runner(base64_urls: list[str]):
 
 #############################################################Trademark Detection Agent#############################################################
 
-# class TrademarkOutput(BaseModel):
-#     trademark_detected: Literal["Yes", "No"]
-#     organization: str | None
+class TrademarkOutput(BaseModel):
+    trademark_detected: Literal["Yes", "No"]
+    organization: str | None
 
 
 trademark_instruction = """You are an expert in trademark identification for apparel designs. Your task is to analyze images of apparel and determine
@@ -163,9 +163,8 @@ by 'Organization:' with either the specific organization/university name(s) iden
   
 trademark_agent = Agent(
     name="Trademark detector",
-    # model= model,
     model="gpt-4o",
-    # output_type= TrademarkOutput,
+    output_type= TrademarkOutput,
     instructions=trademark_instruction,    
     model_settings=ModelSettings(temperature=0.1),
 )
