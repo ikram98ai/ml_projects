@@ -101,21 +101,22 @@ def query_index(index, query_text)-> str:
     
     # Query the index and return top_k matches.
     try:
-        res = index.query(vector=[query_embedding], top_k=3, include_metadata=True)
+        res = index.query(vector=[query_embedding], top_k=1, include_metadata=True)
     except Exception as e:
         print(f"Pinecone query failed: {str(e)}")
         raise ConnectionError(f"Query execution failed: {str(e)}")
         
 
     context ="" 
-    rag_score=0
+    confidence_score=0
     for i,m in enumerate(res['matches']):
         content = m['metadata'].get('Content', '')
         score = m['score']
         context+= f"License #{i+1}; Content: {content}\n"
         print(f"License #{i+1}: Query matching score: {score}; Content: {content[:100]}\n")
-        rag_score+=score
-    return f"Confidence score: {int(rag_score/(i+1)*100)}\n{context}"
+        confidence_score+=score
+    # return f"Confidence score: {int(rag_score/(i+1)*100)}\n{context}"
+    return confidence_score, context
 
 
 

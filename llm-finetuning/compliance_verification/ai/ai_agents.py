@@ -3,6 +3,11 @@ from ai.rag import get_index, query_index
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 from typing import Literal
+from openai import OpenAI
+from ai.prompt import compliance_instruction, system_prompt, design_analysis_prompt, general_rules_prompt
+
+client = OpenAI()
+
 
 load_dotenv()
 
@@ -21,6 +26,68 @@ def get_content_list(base64_urls: list[str]):
 
 #############################################################Compliance Verification Agent#############################################################
 
+class ComplianceOutput(BaseModel):
+    compliance_status: Literal["Compliant", "Non-compliant"]
+    violation_reason: str | None
+    # confidence_score: int = Field(description="Confidence score from `search_licensing_rules` tool or around 99 if `search_licensing_rules` tool is not used.")
+
+  
+def compliance_flow(base64_urls: list[str]):
+    design_analysis =  client.responses.create(
+        model="gpt-4o",
+        input=[{
+            "role": "user",
+            "content": get_content_list(base64_urls)
+        },
+        {
+            "role": "user",
+            "content": design_analysis_prompt
+        }],
+    )
+    analysis = design_analysis.output_text
+    print("Design analysis response: ", analysis)
+  
+    general_rule_evaluation =  client.responses.parse(
+        model="gpt-4o",
+        input=[{
+            "role": "assistant",
+            "content": general_rules_prompt
+        },
+        {
+            "role": "user",
+            "content": analysis 
+        }],
+        text_format= ComplianceOutput
+    )
+
+    evaluation = general_rule_evaluation.output_parsed
+
+    print("General rule evaluation response: ", evaluation)
+    if evaluation.compliance_status == "Non-compliant":
+        return evaluation
+
+
+    context = query_index(pinecone_index,analysis)
+
+    licensing_rule_evaluation =  client.responses.parse(
+        model="gpt-4o",
+        input=[{
+            "role": "assistant",
+            "content": system_prompt.format(analysis,context[1])
+        },
+        {
+            "role": "user",
+            "content": "Review this apparel design for compliance with licensing rules. Provide compliance status and violation reason, if any."
+        }],
+        text_format= ComplianceOutput
+    )
+
+    evaluation = licensing_rule_evaluation.output_parsed
+
+    print("Licensing rule evaluation response: ", evaluation)
+
+    return  {"compliance_status": evaluation.compliance_status, "violation_reason": evaluation.violation_reason, "confidence_score" : int(context[0]*100)}
+
 
 
 @function_tool
@@ -36,79 +103,11 @@ def search_licensing_rules(query: str) -> str:
         if not query.strip():
             return "Query cannot be empty"   
         results = query_index(pinecone_index, query)
-        return "`search_licensing_rules` tool's result:" + results
+        return f"`search_licensing_rules` tool's result with confidence score of {results[0]}: {results[1]}"
     except Exception as e:
         print(f"Error in search_licensing_rules: {str(e)}")
         return f"Error searching documents: {str(e)}"
 
-class ComplianceOutput(BaseModel):
-    compliance_status: Literal["Compliant", "Non-compliant"]
-    violation_reason: str | None
-    confidence_score: int = Field(description="Confidence score from `search_licensing_rules` tool or around 99 if `search_licensing_rules` tool is not used.")
-
-compliance_instruction = """You are a licensing‑compliance specialist for university and Greek‑organization apparel. For each provided design image, perform these steps in order:
-
-1. Analyze design image and identify the target: state whether it’s for a specific UNIVERSITY or GREEK ORGANIZATION and name it.
-2. Apply the relevant “General Rules” (below) for that entity.
-3. Use the `search_licensing_rules` tool to retrieve its official licensing guidelines by providing a clear query from image analysis.
-4. Compare the design to both the general rules and official guidelines.
-5. Decide compliance and report results in exactly two lines:
-   - Line 1: “Compliance Status: Compliant” or “Compliance Status: Non‑compliant”
-   - Line 2: “Violation Reason: None” or a concise rule‑based violation summary.
-
-Do NOT add any extra commentary or hypothetical concerns—base your answer solely on actual violations in the image.
-
-GENERAL RULES FOR DETECTED GREEK ORGANIZATION:
-General rejection reasons on Affinity:
-    - drinking games
-    - Sex/Nudity (provocative graphic images, phrases/text)
-    - Cigarette/Drugs (brands, graphic images, phrases/text)
-    - Violence (graphic images, phrases/text)
-    - Gambling  (graphic images, phrases/text)
-    - Profanity
-    - Any depiction in a demeaning way towards minorities, ethnicities, cultural segments, religious depictions or any images that objectify anyone or any organization.
-    - Official logos need clear space around them. They should not be obstructed/overlapped  with text or other design elements.
-    - Having the name of the group aligned vertically or Greek letters written upside down. Greek letters should be of the same size - One should not be bigger/longer than the other.
-    - Group names should not be split into multiple segments/lines.
-    - Official logos like Coat of Arms and seals of a particular group can not be altered and have to use the exact ones available on Affinity
-    - Designs near the butt/crotch area.
-    - Street, and house addresses, random numbers, or phone numbers on designs are not allowed.
-    - If using EST year, please ensure only the group's founding year is used. If the chapter's est year is used, the chapter name is mandatory along with it.
-    - When a design has custom names and numbers please submit the design after removing it, if we don't have the custom names and numbers already available.
-    - Please note slight variations in color etc. should use the "+ New Version" tool to keep the same designs together. If the design is new it needs to be submitted on its own.
-    - While working on revision requests, please check the verdict of the previous submission to make sure adequate changes have been made, in case the initial design was rejected.
-    - Reference to the movie "Wolf of Wall Street" is not allowed by any of the groups.
-    - If a design has names of more than one Affinity-affiliated Universities, make a separate submission for each one of them.
-    - Affinity had received a letter from the trademark owner that they claim ownership to the “Ducks Unlimited’ logo. As a result, designs bearing the logo are not approved by their clients. 
-    - Affinity has received a letter from the trademark owner that they claim ownership to the ‘Ron Jon Surf Shop’ logo.. As a result, designs bearing the logo are not approved by their clients.
-    - Affinity has received a letter from the trademark owner that they claim ownership to ‘Margaritaville’.. As a result, designs bearing the name are not approved by our clients.
-Rejected brands for Affinity-affiliated groups:
-    - Patagonia
-    - Santa Cruz
-    - Dylan's Candy Bar
-    - Olympics
-    - Adidas
-    - Animal House
-    - Playboy
-Brands we CAN’T DO AT ALL:
-    - OVO
-    - Life is Good
-
-GENERAL RULES FOR DETECTED UNIVERSITY:
-Standard Collegiate Rules
-On any design using the listed verbiage and/or logos on the SPA, please note the following -
-    1. No direct or indirect references to alcohol - including altered alcohol brands/themes, images of bongs, drinks, cups, or mugs (unless specifically marked as a non-alcoholic drink such as juice, milk, etc)
-    2. No direct or indirect references to drugs/smoking - includes quotes/phrases that hint at drug use, slang, images of mushrooms, cigarettes, images of smoke, etc
-    3. No direct or indirect references to violence or profanity - swear words, images of fighting, dead people, crossed-out eyes, dripping effect (referring to blood), guns, knives, machetes, or any other tools depicted in a harmful manner. This applies even if it's a movie theme and the movie is about gore and violence.
-    4. No demeaning representation of any race, culture, ethnicity, or religion.
-    5. No direct or indirect references to sex, nudity, sexual paraphernalia, or slang.
-    6. The design cannot depict affiliation or support to any political parties.
-    7. All the verbiage and logos must be used in tandem with ® and TMs as shown in the Helpjuice articles.
-    8. All the logos must be used as is - no alterations/customizations are allowed - This includes modifying certain aspects of the logo to match the rest of the theme, part-usage of a logo, attempts at creating own logos, etc
-    9. No references to names, images, and likeness (NIL) of any current or former student-athletes and coaches - design cannot have names, or photos of players, when using custom numbers on a sports club/athletic design double check if the numbers belong to the current year's roster
-    10. No references to the NCAA. Cannot use any variation of these terms - National Collegiate Athletic Association, PAC12, SEC, Big10, MAC, Champions, National Champs, Division I, Division II, championship names, bowl names, images of NCAA stadiums, championship trophies/cups, etc.
-"""
-  
 compliance_agent = Agent(
     name="Compliance verifier",
     model="gpt-4o",

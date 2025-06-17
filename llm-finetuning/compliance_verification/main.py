@@ -2,7 +2,7 @@ from fastapi import FastAPI, UploadFile, HTTPException,File
 from fastapi.middleware.cors import CORSMiddleware
 from mangum import Mangum
 from typing import List
-from ai.ai_agents import compliance_agent_runner, trademark_agent_runner
+from ai.ai_agents import compliance_agent_runner, trademark_agent_runner, compliance_flow
 from ai.rag import get_index, upsert_data
 from utils import get_base64_urls, get_docx_contents
 
@@ -21,11 +21,27 @@ async def root():
     return {"message": "Welcome to Fresh Prints' APIs(v2.5) to verify complaince and detect trademark!"}
 
 
-@app.post("/compliance")
-async def compliance_verification(images: List[UploadFile] = File(..., description="Upload one or two image files for compliance verification.")):
+@app.post("/compliance_v1")
+async def compliance_verification_agent(images: List[UploadFile] = File(..., description="Upload one or two image files for compliance verification.")):
     try:
         base64_urls = await get_base64_urls(images[:2])
         output = await compliance_agent_runner(base64_urls)
+        # output = compliance(base64_urls)
+
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        print(f"Error during compliance verification: {e}")
+        raise HTTPException(500,str(e))
+    return output
+
+
+@app.post("/compliance_v2")
+async def compliance_verification_flow(images: List[UploadFile] = File(..., description="Upload one or two image files for compliance verification.")):
+    try:
+        base64_urls = await get_base64_urls(images[:2])
+        # output = await compliance_agent_runner(base64_urls)
+        output = compliance_flow(base64_urls)
 
     except HTTPException as e:
         raise e
