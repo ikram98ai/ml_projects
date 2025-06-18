@@ -1,5 +1,6 @@
 from fastapi import FastAPI, UploadFile, HTTPException,File
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 from mangum import Mangum
 from typing import List
 from ai.ai_agents import compliance_agent_runner, trademark_agent_runner, compliance_flow
@@ -7,7 +8,7 @@ from ai.rag import get_index, upsert_data
 from utils import get_base64_urls, get_docx_contents
 
 
-app = FastAPI()
+app = FastAPI(version="2.6.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -18,7 +19,7 @@ app.add_middleware(
 
 @app.get("/")
 async def root():
-    return {"message": "Welcome to Fresh Prints' APIs(v2.5) to verify complaince and detect trademark!"}
+    return RedirectResponse("/docs")
 
 
 @app.post("/compliance_v1")
