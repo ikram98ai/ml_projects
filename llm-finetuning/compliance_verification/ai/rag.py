@@ -85,7 +85,7 @@ def upsert_data(index, contents: list[str]) -> None:
         return f"Error during upsert: {e}"
 
 
-def query_index(index, query_text)-> str:
+def query_index(index, query_text)-> tuple[float, str]:
     # Generate an embedding for the query.
     print(f"Querying index with: {query_text}")
 
@@ -116,7 +116,7 @@ def query_index(index, query_text)-> str:
         print(f"License #{i+1}: Query matching score: {score}; Content: {content[:100]}\n")
         confidence_score+=score
     # return f"Confidence score: {int(rag_score/(i+1)*100)}\n{context}"
-    return confidence_score, context
+    return confidence_score/(i+1), context
 
 
 

@@ -34,7 +34,7 @@ class ComplianceOutput(BaseModel):
   
 def compliance_flow(base64_urls: list[str]):
     design_analysis =  client.responses.create(
-        model="gpt-4o",
+        model="o3",
         input=[{
             "role": "user",
             "content": get_content_list(base64_urls)
@@ -48,7 +48,7 @@ def compliance_flow(base64_urls: list[str]):
     print("Design analysis response: ", analysis)
   
     general_rule_evaluation =  client.responses.parse(
-        model="gpt-4o",
+        model="o3",
         input=[{
             "role": "assistant",
             "content": general_rules_prompt
@@ -70,7 +70,7 @@ def compliance_flow(base64_urls: list[str]):
     context = query_index(pinecone_index,analysis)
 
     licensing_rule_evaluation =  client.responses.parse(
-        model="gpt-4o",
+        model="o3",
         input=[{
             "role": "assistant",
             "content": system_prompt.format(analysis,context[1])
@@ -87,7 +87,6 @@ def compliance_flow(base64_urls: list[str]):
     print("Licensing rule evaluation response: ", evaluation)
 
     return  {"compliance_status": evaluation.compliance_status, "violation_reason": evaluation.violation_reason, "confidence_score" : int(context[0]*100)}
-
 
 
 @function_tool
@@ -110,28 +109,47 @@ def search_licensing_rules(query: str) -> str:
 
 compliance_agent = Agent(
     name="Compliance verifier",
-    model="gpt-4o",
-    tools= [search_licensing_rules],
+    model="o3",
+    # tools= [search_licensing_rules],
     instructions=compliance_instruction,
     output_type=ComplianceOutput,
-    model_settings=ModelSettings(tool_choice="auto", temperature=0.1),    
+    # model_settings=ModelSettings(tool_choice="auto", temperature=0.1),    
 )
-
 
 
 async def compliance_agent_runner(base64_urls: list[str]):
 
+      
+    design_analysis =  client.responses.create(
+        model="o3",
+        input=[{
+            "role": "user",
+            "content": get_content_list(base64_urls)
+        },
+        {
+            "role": "user",
+            "content": design_analysis_prompt
+        }],
+    )
+
+    analysis = design_analysis.output_text
+
+    score, context = query_index(pinecone_index,analysis)
+
     result = await Runner.run(compliance_agent, input=[
         {
             "role": "user",
-            "content": get_content_list(base64_urls),
+            "content":"Apperal design analysis: "+ analysis + "\nLicensing rules: " + context,
         }, {
             "role": "user",
-            "content": "Review this apparel design information for compliance with licensing rules. Provide compliance status and violation reason, if any.",
+            "content": "Review the apperal design analysis for compliance with provided licensing rules. Provide compliance status and violation reason, if any.",
         },
     ])
     print(f"Compliance verification result: {result.final_output}")
-    return result.final_output
+ 
+    return  {"compliance_status": result.final_output.compliance_status, 
+             "violation_reason": result.final_output.violation_reason, 
+             "confidence_score" : int(score*100)}
 
 #############################################################Trademark Detection Agent#############################################################
 
@@ -148,7 +166,7 @@ by 'Organization:' with either the specific organization/university name(s) iden
   
 trademark_agent = Agent(
     name="Trademark detector",
-    model="gpt-4o",
+    model="o3",
     output_type= TrademarkOutput,
     instructions=trademark_instruction,    
     model_settings=ModelSettings(temperature=0.1),
