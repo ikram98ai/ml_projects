@@ -121,7 +121,7 @@ async def compliance_agent_runner(base64_urls: list[str]):
 
       
     design_analysis =  client.responses.create(
-        model="o3",
+        model="gpt-4o",
         input=[{
             "role": "user",
             "content": get_content_list(base64_urls)
@@ -169,7 +169,7 @@ trademark_agent = Agent(
     model="o3",
     output_type= TrademarkOutput,
     instructions=trademark_instruction,    
-    model_settings=ModelSettings(temperature=0.1),
+    # model_settings=ModelSettings(temperature=0.1),
 )
 
 
