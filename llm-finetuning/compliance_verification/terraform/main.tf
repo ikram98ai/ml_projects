@@ -79,6 +79,14 @@ resource "aws_iam_role_policy" "lambda_policy" {
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
+       {
+        Action = [
+          "lambda:InvokeFunctionUrl",
+          "lambda:GetFunctionUrlConfig"  # Required for URL management
+        ]
+        Effect   = "Allow"
+        Resource = "*"
+      },
       {
         Effect = "Allow"
         Action = [
@@ -154,58 +162,19 @@ resource "aws_cloudwatch_log_group" "lambda_logs" {
   tags              = var.tags
 }
 
-#############################################################API GATEWAY CONFIGURATION#############################################################
 
-# API Gateway (HTTP API)
-resource "aws_apigatewayv2_api" "lambda_api" {
-  name          = "${var.function_name}-api"
-  protocol_type = "HTTP"
-  tags          = var.tags
 
-   cors_configuration {
+# Lambda Function URL
+resource "aws_lambda_function_url" "lambda_url" {
+  function_name      = aws_lambda_function.fastapi_lambda.function_name
+  authorization_type = "NONE"  # Use "AWS_IAM" for IAM authentication
+
+  cors {
     allow_credentials = false
-    expose_headers    = ["*"]
     allow_headers     = ["*"]
     allow_methods     = ["*"]
     allow_origins     = ["*"]
-    max_age          = 86400
+    expose_headers    = ["*"]
+    max_age           = 86400
   }
-}
-
-# API Gateway Integration with Lambda
-resource "aws_apigatewayv2_integration" "lambda_integration" {
-  api_id             = aws_apigatewayv2_api.lambda_api.id
-  integration_type   = "AWS_PROXY"
-  integration_uri    = aws_lambda_function.fastapi_lambda.arn
-  integration_method = "POST"
-}
-
-
-resource "aws_apigatewayv2_route" "proxy_route" {
-  api_id    = aws_apigatewayv2_api.lambda_api.id
-  route_key = "$default"
-  target    = "integrations/${aws_apigatewayv2_integration.lambda_integration.id}"
-}
-
-# OPTIONS method for CORS preflight
-resource "aws_apigatewayv2_route" "options_route" {
-  api_id    = aws_apigatewayv2_api.lambda_api.id
-  route_key = "OPTIONS /{proxy+}"
-  target    = "integrations/${aws_apigatewayv2_integration.lambda_integration.id}"
-}
-
-# API Gateway Stage
-resource "aws_apigatewayv2_stage" "default_stage" {
-  api_id      = aws_apigatewayv2_api.lambda_api.id
-  name        = "$default"
-  auto_deploy = true
-}
-
-# Lambda Permission for API Gateway
-resource "aws_lambda_permission" "api_gw_permission" {
-  statement_id  = "AllowAPIGatewayInvoke"
-  action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.fastapi_lambda.function_name
-  principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_apigatewayv2_api.lambda_api.execution_arn}/*/*"
 }

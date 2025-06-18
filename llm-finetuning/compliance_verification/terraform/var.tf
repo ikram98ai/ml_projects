@@ -22,11 +22,6 @@ variable "image_tag" {
   default     = "latest"
 }
 
-variable "stage_name" {
-  description = "API Gateway stage name"
-  type        = string
-  default     = "prod"
-}
 
 variable "gemini_api_key" {
   description = "Gemini API key"
