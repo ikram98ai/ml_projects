@@ -6,6 +6,7 @@
 
 A fully automated AWS SageMaker Pipeline that trains and deploys an XGBoost model to forecast product turnover days for individual retail partners. On demand, each retailer can trigger a fresh training run and receive a serverless inference endpoint—no manual DevOps hand-offs required.
 
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/ikram98ai/aws_xgboost_pipeline)
 ---
 
 ## 📖 Table of Contents
