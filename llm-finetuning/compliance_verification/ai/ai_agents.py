@@ -5,11 +5,26 @@ from pydantic import BaseModel, Field
 from typing import Literal
 from openai import OpenAI
 from ai.prompt import compliance_instruction, system_prompt, design_analysis_prompt, general_rules_prompt
+from agents import AsyncOpenAI, OpenAIChatCompletionsModel
+import os
+
+load_dotenv()
 
 client = OpenAI()
 
+def get_gemini_model(model_name:str="gemini-2.0-flash"):
+    gemini_client = AsyncOpenAI(
+        base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
+        api_key=os.getenv("GEMINI_API_KEY")
+    )
+    
+    model = OpenAIChatCompletionsModel(
+        openai_client=gemini_client,
+        model=model_name
+    )
 
-load_dotenv()
+    return model
+
 
 pinecone_index = get_index()
 
@@ -64,7 +79,7 @@ def compliance_flow(base64_urls: list[str]):
 
     print("General rule evaluation response: ", evaluation)
     if evaluation.compliance_status == "Non-compliant":
-        return evaluation
+        return   {"compliance_status": evaluation.compliance_status, "violation_reason": evaluation.violation_reason, "confidence_score" : int(context[0]*100)}
 
 
     context = query_index(pinecone_index,analysis)
@@ -109,7 +124,7 @@ def search_licensing_rules(query: str) -> str:
 
 compliance_agent = Agent(
     name="Compliance verifier",
-    model="o3",
+    model=get_gemini_model('gemini-2.5-flash'),#"o3",
     # tools= [search_licensing_rules],
     instructions=compliance_instruction,
     output_type=ComplianceOutput,
@@ -119,9 +134,8 @@ compliance_agent = Agent(
 
 async def compliance_agent_runner(base64_urls: list[str]):
 
-      
     design_analysis =  client.responses.create(
-        model="gpt-4o",
+        model="o4-mini",
         input=[{
             "role": "user",
             "content": get_content_list(base64_urls)
@@ -138,11 +152,11 @@ async def compliance_agent_runner(base64_urls: list[str]):
 
     result = await Runner.run(compliance_agent, input=[
         {
-            "role": "user",
-            "content":"Apperal design analysis: "+ analysis + "\nLicensing rules: " + context,
+            "role": "system",
+            "content":"Licensing rules: " + context,
         }, {
             "role": "user",
-            "content": "Review the apperal design analysis for compliance with provided licensing rules. Provide compliance status and violation reason, if any.",
+            "content": "Review the following apperal design analysis for compliance with licensing rules. Provide compliance status and violation reason, if any." + "\nApperal design analysis: "+ analysis ,
         },
     ])
     print(f"Compliance verification result: {result.final_output}")
