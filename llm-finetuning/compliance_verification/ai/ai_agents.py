@@ -1,29 +1,15 @@
-from agents import Agent, Runner, function_tool, ModelSettings
+from agents import Agent, Runner, ModelSettings
+from openai.types.chat import ParsedChatCompletion
 from ai.rag import get_index, query_index
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 from typing import Literal
 from openai import OpenAI
-from ai.prompt import compliance_instruction, system_prompt, design_analysis_prompt, general_rules_prompt
-from agents import AsyncOpenAI, OpenAIChatCompletionsModel
-import os
-
+from ai.prompt import compliance_instruction, trademark_instruction, design_analysis_prompt, system_prompt, general_rules_prompt
+import math, json
 load_dotenv()
 
 client = OpenAI()
-
-def get_gemini_model(model_name:str="gemini-2.0-flash"):
-    gemini_client = AsyncOpenAI(
-        base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
-        api_key=os.getenv("GEMINI_API_KEY")
-    )
-    
-    model = OpenAIChatCompletionsModel(
-        openai_client=gemini_client,
-        model=model_name
-    )
-
-    return model
 
 
 pinecone_index = get_index()
@@ -39,17 +25,49 @@ def get_content_list(base64_urls: list[str]):
         })
     return content_list
 
+def clean_response(resp:ParsedChatCompletion['ComplianceOutput']):
+    output = {}
+    choice = resp.choices[0]
+
+    # 1️⃣ Extract the raw JSON output (your “structured output”)
+    #    — you can either use the `parsed` field if available:
+    structured: ComplianceOutput = choice.message.parsed
+    print("Compliance status:", structured.compliance_status)
+    print("Violation reason:", structured.violation_reason)
+    output["compliance_status"] = structured.compliance_status
+    output["violation_reason"] = structured.violation_reason
+ 
+    # 2️⃣ Pull out the token log-probs correctly ---
+    # choice.logprobs.content is a list of ChatCompletionTokenLogprob
+    token_logps = [tok.logprob for tok in choice.logprobs.content]
+
+    # Option A: average‐token confidence
+    avg_logp = sum(token_logps) / len(token_logps)
+    avg_confidence = math.exp(avg_logp)
+
+    # Option B: joint‐string confidence
+    sum_logp = sum(token_logps)
+    joint_confidence = math.exp(sum_logp)
+    
+
+    print(f"Avg-token confidence: {avg_confidence:.2%}")
+    print(f"Joint-string confidence: {joint_confidence:.2%}")
+
+    output["confidence_score"] = int(avg_confidence * 100)
+    # output["joint_confidence"] = int(joint_confidence * 100)
+
+    return output
+
 #############################################################Compliance Verification Agent#############################################################
 
 class ComplianceOutput(BaseModel):
     compliance_status: Literal["Compliant", "Non-compliant"]
     violation_reason: str | None
-    # confidence_score: int = Field(description="Confidence score from `search_licensing_rules` tool or around 99 if `search_licensing_rules` tool is not used.")
 
-  
+
 def compliance_flow(base64_urls: list[str]):
     design_analysis =  client.responses.create(
-        model="o3",
+        model="gpt-4o",
         input=[{
             "role": "user",
             "content": get_content_list(base64_urls)
@@ -62,9 +80,9 @@ def compliance_flow(base64_urls: list[str]):
     analysis = design_analysis.output_text
     print("Design analysis response: ", analysis)
   
-    general_rule_evaluation =  client.responses.parse(
-        model="o3",
-        input=[{
+    general_rule_evaluation =  client.beta.chat.completions.parse(
+        model="gpt-4o",
+        messages=[{
             "role": "assistant",
             "content": general_rules_prompt
         },
@@ -72,21 +90,25 @@ def compliance_flow(base64_urls: list[str]):
             "role": "user",
             "content": analysis 
         }],
-        text_format= ComplianceOutput
+        response_format= ComplianceOutput,
+        logprobs=True,
+        top_logprobs= 5,
+        temperature=0.0,  # Lower temperature
+        top_p=0.1         # Lower top_p
     )
 
-    evaluation = general_rule_evaluation.output_parsed
+    print("General rule evaluation response: ")
+    output = clean_response(general_rule_evaluation)
 
-    print("General rule evaluation response: ", evaluation)
-    if evaluation.compliance_status == "Non-compliant":
-        return   {"compliance_status": evaluation.compliance_status, "violation_reason": evaluation.violation_reason, "confidence_score" : int(context[0]*100)}
+    if output["compliance_status"] == "Non-compliant":
+        return  output
 
 
     context = query_index(pinecone_index,analysis)
 
-    licensing_rule_evaluation =  client.responses.parse(
-        model="o3",
-        input=[{
+    licensing_rule_evaluation =  client.beta.chat.completions.parse(
+        model="gpt-4o",
+        messages=[{
             "role": "assistant",
             "content": system_prompt.format(analysis,context[1])
         },
@@ -94,48 +116,22 @@ def compliance_flow(base64_urls: list[str]):
             "role": "user",
             "content": "Review this apparel design for compliance with licensing rules. Provide compliance status and violation reason, if any."
         }],
-        text_format= ComplianceOutput
+        response_format= ComplianceOutput,
+        logprobs=True,
+        top_logprobs= 5,
+        temperature=0.0,  # Lower temperature
+        top_p=0.1         # Lower top_p
     )
 
-    evaluation = licensing_rule_evaluation.output_parsed
+    print("Licensing rule evaluation response: ")
+    output = clean_response(licensing_rule_evaluation)
 
-    print("Licensing rule evaluation response: ", evaluation)
-
-    return  {"compliance_status": evaluation.compliance_status, "violation_reason": evaluation.violation_reason, "confidence_score" : int(context[0]*100)}
-
-
-@function_tool
-def search_licensing_rules(query: str) -> str:
-    """
-    Search for relevant licensing rules using semantic query
-    Args:
-        query: Natural language query for the vector database
-    Returns:
-        Search results from the vector database
-    """
-    try:
-        if not query.strip():
-            return "Query cannot be empty"   
-        results = query_index(pinecone_index, query)
-        return f"`search_licensing_rules` tool's result with confidence score of {results[0]}: {results[1]}"
-    except Exception as e:
-        print(f"Error in search_licensing_rules: {str(e)}")
-        return f"Error searching documents: {str(e)}"
-
-compliance_agent = Agent(
-    name="Compliance verifier",
-    model=get_gemini_model('gemini-2.5-flash'),#"o3",
-    # tools= [search_licensing_rules],
-    instructions=compliance_instruction,
-    output_type=ComplianceOutput,
-    # model_settings=ModelSettings(tool_choice="auto", temperature=0.1),    
-)
+    return  output
 
 
 async def compliance_agent_runner(base64_urls: list[str]):
-
     design_analysis =  client.responses.create(
-        model="o4-mini",
+        model="o3",
         input=[{
             "role": "user",
             "content": get_content_list(base64_urls)
@@ -150,6 +146,15 @@ async def compliance_agent_runner(base64_urls: list[str]):
 
     score, context = query_index(pinecone_index,analysis)
 
+    compliance_agent = Agent(
+        name="Compliance verifier",
+        model="gpt-4o-mini",
+        # tools= [search_licensing_rules],
+        instructions=compliance_instruction,
+        output_type=ComplianceOutput,
+        # model_settings=ModelSettings(tool_choice="auto", extra_body={"logprobs": True}),    
+    )
+
     result = await Runner.run(compliance_agent, input=[
         {
             "role": "system",
@@ -159,7 +164,7 @@ async def compliance_agent_runner(base64_urls: list[str]):
             "content": "Review the following apperal design analysis for compliance with licensing rules. Provide compliance status and violation reason, if any." + "\nApperal design analysis: "+ analysis ,
         },
     ])
-    print(f"Compliance verification result: {result.final_output}")
+    print(f"Compliance verification result: {result}")
  
     return  {"compliance_status": result.final_output.compliance_status, 
              "violation_reason": result.final_output.violation_reason, 
@@ -172,22 +177,16 @@ class TrademarkOutput(BaseModel):
     organization: str | None
 
 
-trademark_instruction = """You are an expert in trademark identification for apparel designs. Your task is to analyze images of apparel and determine
-if they contain licensed trademarks such as Greek organization letters (fraternities/sororities) or collegiate/university marks. Your response
-must strictly follow this two-line format: first indicating 'Licensed trademarks detected: Yes' or 'Licensed trademarks detected: No', followed
-by 'Organization:' with either the specific organization/university name(s) identified or 'None' if no trademarks are detected."""
-
-  
-trademark_agent = Agent(
-    name="Trademark detector",
-    model="o3",
-    output_type= TrademarkOutput,
-    instructions=trademark_instruction,    
-    # model_settings=ModelSettings(temperature=0.1),
-)
-
 
 async def trademark_agent_runner(base64_urls: list[str]):
+
+    trademark_agent = Agent(
+        name="Trademark detector",
+        model="o3",
+        output_type= TrademarkOutput,
+        instructions=trademark_instruction,    
+        # model_settings=ModelSettings(temperature=0.1),
+    )
     
     result = await Runner.run(trademark_agent, input=[
         {

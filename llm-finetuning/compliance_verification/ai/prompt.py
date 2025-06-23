@@ -150,7 +150,7 @@ compliance_instruction = """You are a licensing‑compliance specialist for univ
 
 3. Report the results in exactly two lines:
    - Line 1: "Compliance Status: Compliant" or "Compliance Status: Non‑compliant"
-   - Line 2: "Violation Reason: None" if compliant, or a brief explanation for non-compliant designs.
+   - Line 2: "Violation Reason: None" if compliant, or a brief one liner explanation for non-compliant designs.
 
 Do not add any extra commentary or hypothetical concerns. Base your answer solely on actual violations reason from general and licensing rules observed in the image.
 
@@ -204,3 +204,8 @@ On any design using the listed verbiage and/or logos on the SPA, please note the
     9. No references to names, images, and likeness (NIL) of any current or former student-athletes and coaches - design cannot have names, or photos of players, when using custom numbers on a sports club/athletic design double check if the numbers belong to the current year's roster
     10. No references to the NCAA. Cannot use any variation of these terms - National Collegiate Athletic Association, PAC12, SEC, Big10, MAC, Champions, National Champs, Division I, Division II, championship names, bowl names, images of NCAA stadiums, championship trophies/cups, etc.
 """
+
+trademark_instruction = """You are an expert in trademark identification for apparel designs. Your task is to analyze images of apparel and determine
+if they contain licensed trademarks such as Greek organization letters (fraternities/sororities) or collegiate/university marks. Your response
+must strictly follow this two-line format: first indicating 'Licensed trademarks detected: Yes' or 'Licensed trademarks detected: No', followed
+by 'Organization:' with either the specific organization/university name(s) identified or 'None' if no trademarks are detected."""

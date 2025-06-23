@@ -8,7 +8,7 @@ from ai.rag import get_index, upsert_data
 from utils import get_base64_urls, get_docx_contents
 
 
-app = FastAPI(version="2.6.1")
+app = FastAPI(version="2.7.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -22,7 +22,23 @@ async def root():
     return RedirectResponse("/docs")
 
 
-@app.post("/compliance_v1")
+
+@app.post("/compliance_flow")
+async def compliance_verification_flow(images: List[UploadFile] = File(..., description="Upload one or two image files for compliance verification.")):
+    try:
+        base64_urls = await get_base64_urls(images[:2])
+        # output = await compliance_agent_runner(base64_urls)
+        output = compliance_flow(base64_urls)
+
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        print(f"Error during compliance verification: {e}")
+        raise HTTPException(500,str(e))
+    return output
+
+
+@app.post("/compliance_agent")
 async def compliance_verification_agent(images: List[UploadFile] = File(..., description="Upload one or two image files for compliance verification.")):
     try:
         base64_urls = await get_base64_urls(images[:2])
@@ -36,20 +52,6 @@ async def compliance_verification_agent(images: List[UploadFile] = File(..., des
         raise HTTPException(500,str(e))
     return output
 
-
-@app.post("/compliance_v2")
-async def compliance_verification_flow(images: List[UploadFile] = File(..., description="Upload one or two image files for compliance verification.")):
-    try:
-        base64_urls = await get_base64_urls(images[:2])
-        # output = await compliance_agent_runner(base64_urls)
-        output = compliance_flow(base64_urls)
-
-    except HTTPException as e:
-        raise e
-    except Exception as e:
-        print(f"Error during compliance verification: {e}")
-        raise HTTPException(500,str(e))
-    return output
 
 
 @app.post("/trademark")

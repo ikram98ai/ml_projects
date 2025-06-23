@@ -11,13 +11,12 @@ load_dotenv()
 
 
 # Initialize clients
-EMBED_MODEL_BASE_URL = os.getenv("EMBED_MODEL_BASE_URL","https://generativelanguage.googleapis.com/v1beta/openai/")
-EMBED_MODEL = os.getenv("EMBED_MODEL", "text-embedding-004")
-PINECONE_INDEX = os.getenv("PINECONE_INDEX", "apperal-compliance-index")
-EMBED_DIM = int(os.getenv("PINECONE_DIM", 768))
+EMBED_MODEL = os.getenv("EMBED_MODEL", "text-embedding-3-small")
+PINECONE_INDEX = os.getenv("PINECONE_INDEX", "apperal-compliance-openai-index")
+EMBED_DIM = int(os.getenv("PINECONE_DIM", 1536))
 PINECONE_REGION = os.getenv("PINECONE_REGION", "us-east-1")
 
-client = OpenAI( base_url=EMBED_MODEL_BASE_URL, api_key=os.getenv("GEMINI_API_KEY"))
+client = OpenAI()
 
 def get_index():
     pc = Pinecone(api_key=os.getenv("PINECONE_API_KEY"))
@@ -59,7 +58,7 @@ def get_data_from_dir(data_dir)->list[str]:
 
 def upsert_data(index, contents: list[str]) -> None:
     print(f"Upserting data with length {len(contents)} into Pinecone index...")
-
+    
     try:
         batch_size = 32
         for i in range(0, len(contents), batch_size):
@@ -88,7 +87,7 @@ def upsert_data(index, contents: list[str]) -> None:
 def query_index(index, query_text)-> tuple[float, str]:
     # Generate an embedding for the query.
     print(f"Querying index with: {query_text}")
-
+    # index = get_index()
     try:
         response = client.embeddings.create(input=query_text, model=EMBED_MODEL)
         if not response or not response.data or not response.data[0].embedding:
