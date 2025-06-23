@@ -52,7 +52,7 @@ def clean_response(resp:ParsedChatCompletion['ComplianceOutput']):
 
     print(f"Avg-token confidence: {avg_confidence:.2%}")
     print(f"Joint-string confidence: {joint_confidence:.2%}")
-
+ 
     output["confidence_score"] = int(avg_confidence * 100)
     # output["joint_confidence"] = int(joint_confidence * 100)
 
