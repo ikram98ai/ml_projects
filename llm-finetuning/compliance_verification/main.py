@@ -8,7 +8,7 @@ from ai.rag import get_index, upsert_data
 from utils import get_base64_urls, get_docx_contents
 
 
-app = FastAPI(version="2.7.0")
+app = FastAPI(version="2.7.2")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],

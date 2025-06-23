@@ -131,7 +131,7 @@ def compliance_flow(base64_urls: list[str]):
 
 async def compliance_agent_runner(base64_urls: list[str]):
     design_analysis =  client.responses.create(
-        model="o3",
+        model="gpt-4o",
         input=[{
             "role": "user",
             "content": get_content_list(base64_urls)
@@ -148,7 +148,7 @@ async def compliance_agent_runner(base64_urls: list[str]):
 
     compliance_agent = Agent(
         name="Compliance verifier",
-        model="gpt-4o-mini",
+        model="o3",
         # tools= [search_licensing_rules],
         instructions=compliance_instruction,
         output_type=ComplianceOutput,
