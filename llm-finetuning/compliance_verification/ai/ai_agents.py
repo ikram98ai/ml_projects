@@ -1,8 +1,8 @@
-from agents import Agent, Runner, ModelSettings
+from agents import Agent, Runner
 from openai.types.chat import ParsedChatCompletion
 from ai.rag import get_index, query_index
 from dotenv import load_dotenv
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from typing import Literal
 from openai import OpenAI
 from ai.prompt import compliance_instruction, trademark_instruction, design_analysis_prompt, system_prompt, general_rules_prompt
@@ -29,16 +29,12 @@ def clean_response(resp:ParsedChatCompletion['ComplianceOutput']):
     output = {}
     choice = resp.choices[0]
 
-    # 1️⃣ Extract the raw JSON output (your “structured output”)
-    #    — you can either use the `parsed` field if available:
     structured: ComplianceOutput = choice.message.parsed
     print("Compliance status:", structured.compliance_status)
     print("Violation reason:", structured.violation_reason)
     output["compliance_status"] = structured.compliance_status
     output["violation_reason"] = structured.violation_reason
  
-    # 2️⃣ Pull out the token log-probs correctly ---
-    # choice.logprobs.content is a list of ChatCompletionTokenLogprob
     token_logps = [tok.logprob for tok in choice.logprobs.content]
 
     # Option A: average‐token confidence
@@ -93,7 +89,7 @@ def compliance_flow(base64_urls: list[str]):
         response_format= ComplianceOutput,
         logprobs=True,
         top_logprobs= 5,
-        temperature=0.0,  # Lower temperature
+        temperature=0.1,  # Lower temperature
         top_p=0.1         # Lower top_p
     )
 
@@ -164,7 +160,6 @@ async def compliance_agent_runner(base64_urls: list[str]):
             "content": "Review the following apperal design analysis for compliance with licensing rules. Provide compliance status and violation reason, if any." + "\nApperal design analysis: "+ analysis ,
         },
     ])
-    print(f"Compliance verification result: {result}")
  
     return  {"compliance_status": result.final_output.compliance_status, 
              "violation_reason": result.final_output.violation_reason, 

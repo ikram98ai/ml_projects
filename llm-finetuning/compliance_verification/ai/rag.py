@@ -35,7 +35,7 @@ def get_index():
 
     # Connect to the index.
     index = pc.Index(PINECONE_INDEX)
-    print('Connected to Pinecone index:', PINECONE_INDEX,'\n', index)
+    # print('Connected to Pinecone index:', PINECONE_INDEX,'\n', index)
     return index
 
 
@@ -86,7 +86,7 @@ def upsert_data(index, contents: list[str]) -> None:
 
 def query_index(index, query_text)-> tuple[float, str]:
     # Generate an embedding for the query.
-    print(f"Querying index with: {query_text}")
+    print(f"Querying index with: {query_text[:100]}")
     # index = get_index()
     try:
         response = client.embeddings.create(input=query_text, model=EMBED_MODEL)
