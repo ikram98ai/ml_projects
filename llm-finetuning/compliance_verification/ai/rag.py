@@ -95,7 +95,6 @@ def query_index(index, query_text)-> tuple[float, str]:
         query_embedding = response.data[0].embedding
     except Exception as e:
         print(f"Failed to create query embedding: {str(e)}")
-        traceback.print_exc()
         raise ConnectionError(f"Embedding generation failed: {str(e)}")
     
     # Query the index and return top_k matches.
@@ -111,8 +110,8 @@ def query_index(index, query_text)-> tuple[float, str]:
     for i,m in enumerate(res['matches']):
         content = m['metadata'].get('Content', '')
         score = m['score']
-        context+= f"License #{i+1}; Content: {content}\n"
-        print(f"License #{i+1}: Query matching score: {score}; Content: {content[:100]}\n")
+        context+= f"{content}\n"
+        print(f"License: {i+1}; Score: {score}; Content: {content[:100]}\n")
         confidence_score+=score
     # return f"Confidence score: {int(rag_score/(i+1)*100)}\n{context}"
     return confidence_score/(i+1), context

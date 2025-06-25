@@ -1,4 +1,4 @@
-from agents import Agent, Runner
+from agents import Agent, Runner, ModelSettings, function_tool
 from openai.types.chat import ParsedChatCompletion
 from ai.rag import get_index, query_index
 from dotenv import load_dotenv
@@ -6,12 +6,10 @@ from pydantic import BaseModel
 from typing import Literal
 from openai import OpenAI
 from ai.prompt import compliance_instruction, trademark_instruction, design_analysis_prompt, system_prompt, general_rules_prompt
-import math, json
+import math
 load_dotenv()
 
 client = OpenAI()
-
-
 pinecone_index = get_index()
 
 def get_content_list(base64_urls: list[str]):
@@ -60,10 +58,23 @@ class ComplianceOutput(BaseModel):
     compliance_status: Literal["Compliant", "Non-compliant"]
     violation_reason: str | None
 
+@function_tool
+def search_licensing_rules(query: str) -> str:
+    """
+    Search for relevant licensing rules using the semantic query.
+    Args:
+        query: Extracted information from apparel design to search for compliance rules.
+    Returns:
+        Search results from the vector database
+    """
+    index = get_index()
+    score, result = query_index(index, query)
+
+    return result
 
 def compliance_flow(base64_urls: list[str]):
     design_analysis =  client.responses.create(
-        model="gpt-4o",
+        model="gpt-4o-mini",
         input=[{
             "role": "user",
             "content": get_content_list(base64_urls)
@@ -77,7 +88,7 @@ def compliance_flow(base64_urls: list[str]):
     print("Design analysis response: ", analysis)
   
     general_rule_evaluation =  client.beta.chat.completions.parse(
-        model="gpt-4o",
+        model="gpt-4o-mini",
         messages=[{
             "role": "assistant",
             "content": general_rules_prompt
@@ -103,7 +114,7 @@ def compliance_flow(base64_urls: list[str]):
     context = query_index(pinecone_index,analysis)
 
     licensing_rule_evaluation =  client.beta.chat.completions.parse(
-        model="gpt-4o",
+        model="gpt-4o-mini",
         messages=[{
             "role": "assistant",
             "content": system_prompt.format(analysis,context[1])
@@ -126,44 +137,37 @@ def compliance_flow(base64_urls: list[str]):
 
 
 async def compliance_agent_runner(base64_urls: list[str]):
-    design_analysis =  client.responses.create(
-        model="gpt-4o",
-        input=[{
-            "role": "user",
-            "content": get_content_list(base64_urls)
-        },
-        {
-            "role": "user",
-            "content": design_analysis_prompt
-        }],
-    )
+    # design_analysis =  client.responses.create(
+    #     model="gpt-4o",
+    #     input=[{
+    #         "role": "user",
+    #         "content": get_content_list(base64_urls)
+    #     },
+    #     {
+    #         "role": "user",
+    #         "content": design_analysis_prompt
+    #     }],
+    # )
 
-    analysis = design_analysis.output_text
-
-    score, context = query_index(pinecone_index,analysis)
-
+    # analysis = design_analysis.output_text
+    
     compliance_agent = Agent(
         name="Compliance verifier",
-        model="o3",
-        # tools= [search_licensing_rules],
+        model="gpt-4o",
+        tools= [search_licensing_rules],
         instructions=compliance_instruction,
         output_type=ComplianceOutput,
-        # model_settings=ModelSettings(tool_choice="auto", extra_body={"logprobs": True}),    
+        model_settings=ModelSettings(tool_choice="auto", temperature=0.1, top_p=0.1),    
     )
 
     result = await Runner.run(compliance_agent, input=[
         {
-            "role": "system",
-            "content":"Licensing rules: " + context,
-        }, {
             "role": "user",
-            "content": "Review the following apperal design analysis for compliance with licensing rules. Provide compliance status and violation reason, if any." + "\nApperal design analysis: "+ analysis ,
+            "content": get_content_list(base64_urls)
         },
     ])
  
-    return  {"compliance_status": result.final_output.compliance_status, 
-             "violation_reason": result.final_output.violation_reason, 
-             "confidence_score" : int(score*100)}
+    return result.final_output
 
 #############################################################Trademark Detection Agent#############################################################
 
@@ -172,12 +176,11 @@ class TrademarkOutput(BaseModel):
     organization: str | None
 
 
-
 async def trademark_agent_runner(base64_urls: list[str]):
 
     trademark_agent = Agent(
         name="Trademark detector",
-        model="o3",
+        model="gpt-4o-mini",
         output_type= TrademarkOutput,
         instructions=trademark_instruction,    
         # model_settings=ModelSettings(temperature=0.1),

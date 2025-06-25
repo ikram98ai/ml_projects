@@ -6,9 +6,10 @@ from typing import List
 from ai.ai_agents import compliance_agent_runner, trademark_agent_runner, compliance_flow
 from ai.rag import get_index, upsert_data
 from utils import get_base64_urls, get_docx_contents
+import traceback
 
 
-app = FastAPI(version="2.7.2")
+app = FastAPI(version="2.8.2")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -31,9 +32,11 @@ async def compliance_verification_flow(images: List[UploadFile] = File(..., desc
         output = compliance_flow(base64_urls)
 
     except HTTPException as e:
+        traceback.print_exc()
         raise e
     except Exception as e:
         print(f"Error during compliance verification: {e}")
+        traceback.print_exc()
         raise HTTPException(500,str(e))
     return output
 
@@ -46,9 +49,11 @@ async def compliance_verification_agent(images: List[UploadFile] = File(..., des
         # output = compliance(base64_urls)
 
     except HTTPException as e:
+        traceback.print_exc()
         raise e
     except Exception as e:
         print(f"Error during compliance verification: {e}")
+        traceback.print_exc()
         raise HTTPException(500,str(e))
     return output
 
@@ -61,9 +66,11 @@ async def trademark_detection(images: List[UploadFile] = File(..., description="
         output = await trademark_agent_runner(base64_urls)
 
     except HTTPException as e:
+        traceback.print_exc()
         raise e
     except Exception as e:
         print(f"Error during trademark detection: {e}")
+        traceback.print_exc()
         raise HTTPException(500,str(e))
     return {"output": output }
 
@@ -77,9 +84,12 @@ async def upsert_into_pinecone(docs: List[UploadFile] = File(..., description="U
         output = upsert_data(index, contents)
 
     except HTTPException as e:
+        traceback.print_exc()
         raise e
+
     except Exception as e:
         print(f"Error during upserting data to pinecone index: {e}")
+        traceback.print_exc()
         raise HTTPException(500,str(e))
     return output
 
