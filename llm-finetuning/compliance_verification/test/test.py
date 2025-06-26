@@ -7,7 +7,7 @@ def test_compliance_api(csv_path, output_path, api_url):
     df = pd.read_csv(csv_path)
 
     # Prepare columns if they don't exist
-    for col in ['AI Compliance', 'AI violation', 'Confidence Score', 'Joint Confidence Score']:
+    for col in ['AI Compliance', 'AI violation', 'Confidence Score']:
         if col not in df.columns:
             df[col] = None
 

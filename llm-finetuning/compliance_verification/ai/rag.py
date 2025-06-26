@@ -114,7 +114,7 @@ def query_index(index, query_text)-> tuple[float, str]:
         print(f"License: {i+1}; Score: {score}; Content: {content[:100]}\n")
         confidence_score+=score
     # return f"Confidence score: {int(rag_score/(i+1)*100)}\n{context}"
-    return confidence_score/(i+1), context
+    return confidence_score/(i+1), "LICENSING RULES FOR DETECTED ORGANIZATION" + context
 
 
 

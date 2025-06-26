@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 from typing import Literal
 from openai import OpenAI
-from ai.prompt import compliance_instruction, trademark_instruction, design_analysis_prompt, system_prompt, general_rules_prompt
+from ai.prompt import compliance_instruction, trademark_instruction, design_analysis_prompt, system_prompt, general_rules
 import math
 load_dotenv()
 
@@ -96,42 +96,17 @@ def search_licensing_rules(query: str) -> str:
 def compliance_flow(base64_urls: list[str]):
     
     analysis = image_analysis(base64_urls)
-
-    general_rule_evaluation =  client.beta.chat.completions.parse(
-        model="gpt-4o-mini",
-        messages=[{
-            "role": "assistant",
-            "content": general_rules_prompt
-        },
-        {
-            "role": "user",
-            "content": "\n".join(analysis[:5])
-        }],
-        response_format= ComplianceOutput,
-        logprobs=True,
-        top_logprobs= 5,
-        temperature=0.1,  # Lower temperature
-        top_p=0.1         # Lower top_p
-    )
-
-    print("General rule evaluation response: ")
-    output = clean_response(general_rule_evaluation)
-
-    if output["compliance_status"] == "Non-compliant":
-        return  output
-
-    
+  
     context = "\n".join([query_index(pinecone_index,sentence)[1] for sentence in analysis[:5]])
 
     licensing_rule_evaluation =  client.beta.chat.completions.parse(
         model="gpt-4o-mini",
         messages=[{
-            "role": "assistant",
-            "content": system_prompt.format(analysis,context[1])
-        },
-        {
             "role": "user",
-            "content": "Review this apparel design for compliance with licensing rules. Provide compliance status and violation reason, if any."
+            "content": system_prompt.format(analysis, context + general_rules)
+        },{
+            "role": "user",
+            "content": "Review this apparel design for compliance with general and licensing rules. Provide compliance status and violation reason, if any."
         }],
         response_format= ComplianceOutput,
         logprobs=True,
