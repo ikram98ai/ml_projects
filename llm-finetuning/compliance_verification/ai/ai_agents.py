@@ -2,7 +2,7 @@ from agents import Agent, Runner, ModelSettings, function_tool
 from openai.types.chat import ParsedChatCompletion
 from ai.rag import get_index, query_index
 from dotenv import load_dotenv
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Literal
 from openai import OpenAI
 from ai.prompt import compliance_instruction, trademark_instruction, design_analysis_prompt, system_prompt, general_rules_prompt
@@ -58,6 +58,27 @@ class ComplianceOutput(BaseModel):
     compliance_status: Literal["Compliant", "Non-compliant"]
     violation_reason: str | None
 
+class ImageAnalysisOutput(BaseModel):
+    image_analysis: list[str] = Field(desc= "analysis of the apparel design images, must include the organization name and type in each sentence, write only one sencence per organization if available.")
+
+def image_analysis(base64_urls):
+    design_analysis =  client.responses.parse(
+        model="gpt-4o-mini",
+        input=[{
+            "role": "user",
+            "content": get_content_list(base64_urls)
+        },
+        {
+            "role": "user",
+            "content": design_analysis_prompt
+        }],
+        text_format=ImageAnalysisOutput
+    )
+
+    analysis = design_analysis.output_parsed.image_analysis
+    return analysis
+
+
 @function_tool
 def search_licensing_rules(query: str) -> str:
     """
@@ -73,20 +94,9 @@ def search_licensing_rules(query: str) -> str:
     return result
 
 def compliance_flow(base64_urls: list[str]):
-    design_analysis =  client.responses.create(
-        model="gpt-4o-mini",
-        input=[{
-            "role": "user",
-            "content": get_content_list(base64_urls)
-        },
-        {
-            "role": "user",
-            "content": design_analysis_prompt
-        }],
-    )
-    analysis = design_analysis.output_text
-    print("Design analysis response: ", analysis)
-  
+    
+    analysis = image_analysis(base64_urls)
+
     general_rule_evaluation =  client.beta.chat.completions.parse(
         model="gpt-4o-mini",
         messages=[{
@@ -95,7 +105,7 @@ def compliance_flow(base64_urls: list[str]):
         },
         {
             "role": "user",
-            "content": analysis 
+            "content": "\n".join(analysis[:5])
         }],
         response_format= ComplianceOutput,
         logprobs=True,
@@ -110,8 +120,8 @@ def compliance_flow(base64_urls: list[str]):
     if output["compliance_status"] == "Non-compliant":
         return  output
 
-
-    context = query_index(pinecone_index,analysis)
+    
+    context = "\n".join([query_index(pinecone_index,sentence)[1] for sentence in analysis[:5]])
 
     licensing_rule_evaluation =  client.beta.chat.completions.parse(
         model="gpt-4o-mini",
@@ -137,19 +147,6 @@ def compliance_flow(base64_urls: list[str]):
 
 
 async def compliance_agent_runner(base64_urls: list[str]):
-    # design_analysis =  client.responses.create(
-    #     model="gpt-4o",
-    #     input=[{
-    #         "role": "user",
-    #         "content": get_content_list(base64_urls)
-    #     },
-    #     {
-    #         "role": "user",
-    #         "content": design_analysis_prompt
-    #     }],
-    # )
-
-    # analysis = design_analysis.output_text
     
     compliance_agent = Agent(
         name="Compliance verifier",
@@ -160,10 +157,13 @@ async def compliance_agent_runner(base64_urls: list[str]):
         model_settings=ModelSettings(tool_choice="auto", temperature=0.1, top_p=0.1),    
     )
 
+    analysis = image_analysis(base64_urls)
+
     result = await Runner.run(compliance_agent, input=[
         {
             "role": "user",
-            "content": get_content_list(base64_urls)
+            "content": "Review the following apperal design analysis for compliance with licensing rules. Provide compliance status and violation reason, if any." 
+                     + "\nApperal design analysis: "+ "\n".join(analysis) ,
         },
     ])
  
