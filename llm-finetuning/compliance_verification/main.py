@@ -9,7 +9,7 @@ from utils import get_base64_urls, get_docx_contents
 import traceback
 
 
-app = FastAPI(version="2.8.2")
+app = FastAPI(version="2.9.2")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],

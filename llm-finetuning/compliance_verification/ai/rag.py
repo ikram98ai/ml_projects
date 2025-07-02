@@ -12,7 +12,7 @@ load_dotenv()
 
 # Initialize clients
 EMBED_MODEL = os.getenv("EMBED_MODEL", "text-embedding-3-small")
-PINECONE_INDEX = os.getenv("PINECONE_INDEX", "apperal-compliance-openai-index")
+PINECONE_INDEX = os.getenv("PINECONE_INDEX", "apperal-compliance-v2-index")
 EMBED_DIM = int(os.getenv("PINECONE_DIM", 1536))
 PINECONE_REGION = os.getenv("PINECONE_REGION", "us-east-1")
 
@@ -67,7 +67,7 @@ def upsert_data(index, contents: list[str]) -> None:
             ids_batch = [str(n) for n in range(i, i_end)]
             
             # Create embeddings for the current batch.
-            res = client.embeddings.create(input=[line for line in lines_batch], model=EMBED_MODEL)
+            res = client.embeddings.create(input=[line[:1536] for line in lines_batch], model=EMBED_MODEL)
             embeds = [record.embedding for record in res.data]
             
             # Prepare metadata.
@@ -114,7 +114,7 @@ def query_index(index, query_text)-> tuple[float, str]:
         print(f"License: {i+1}; Score: {score}; Content: {content[:100]}\n")
         confidence_score+=score
     # return f"Confidence score: {int(rag_score/(i+1)*100)}\n{context}"
-    return confidence_score/(i+1), "LICENSING RULES FOR DETECTED ORGANIZATION" + context
+    return confidence_score/(i+1), "LICENSING RULES FOR DETECTED ORGANIZATION: " + context
 
 
 
