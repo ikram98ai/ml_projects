@@ -8,6 +8,10 @@ dev:
 	@echo "Running the application..."
 	uvicorn main:app --reload
 
+upsert_rag:
+	@echo "Upserting RAG data..."
+	python ai/rag.py --upsert
+
 docker: 
 	@echo "Building Docker image..."
 	docker build -t apparel-lambda .

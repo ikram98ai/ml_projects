@@ -13,7 +13,7 @@ apperals_verification/
 ├── terraform/
 │   ├── main.tf
 │   ├── backend.tf
-│   ├── variables.tf
+│   ├── var.tf
 │   ├── outputs.tf
 │   └── terraform.tfvars
 ├── .dockerignore
@@ -130,6 +130,63 @@ make destroy
 *   **Automated Deployment**: Triggered on pushes to the `main` branch.
 
 
+## API Endpoints
+
+The application exposes the following API endpoints:
+
+### `POST /compliance_flow`
+
+*   **Description**: Performs compliance verification on uploaded apparel design images using a direct flow. This endpoint integrates image analysis, rule retrieval, and compliance evaluation to determine if a design adheres to general and licensing rules.
+*   **Input**: `images` (List[UploadFile]) - A list of up to two image files (PNG, JPG, JPEG) for analysis.
+*   **Output**: A JSON object containing the `compliance_status` (e.g., "Compliant", "Non-compliant") and `violation_reason` (a brief explanation if non-compliant).
+*   **Example Usage**:
+    ```bash
+    curl -X POST "http://localhost:8000/compliance_flow" \
+      -H "accept: application/json" \
+      -H "Content-Type: multipart/form-data" \
+      -F "images=@./path/to/your/image1.png" \
+      -F "images=@./path/to/your/image2.jpeg"
+    ```
+
+### `POST /compliance_agent`
+
+*   **Description**: Performs compliance verification using an AI agent-based approach. This endpoint leverages a more sophisticated agentic workflow for compliance checking, allowing for more dynamic rule application and reasoning.
+*   **Input**: `images` (List[UploadFile]) - A list of up to two image files (PNG, JPG, JPEG) for analysis.
+*   **Output**: A JSON object containing the `compliance_status` and `violation_reason`.
+*   **Example Usage**:
+    ```bash
+    curl -X POST "http://localhost:8000/compliance_agent" \
+      -H "accept: application/json" \
+      -H "Content-Type: multipart/form-data" \
+      -F "images=@./path/to/your/image1.png"
+    ```
+
+### `POST /trademark`
+
+*   **Description**: Detects trademarks (e.g., Greek letters, collegiate marks) within uploaded apparel design images.
+*   **Input**: `images` (List[UploadFile]) - A list of up to two image files (PNG, JPG, JPEG) for analysis.
+*   **Output**: A JSON object indicating `trademark_detected` ("Yes" or "No") and the `organization` name if a trademark is found.
+*   **Example Usage**:
+    ```bash
+    curl -X POST "http://localhost:8000/trademark" \
+      -H "accept: application/json" \
+      -H "Content-Type: multipart/form-data" \
+      -F "images=@./path/to/your/image.png"
+    ```
+
+### `POST /upsert`
+
+*   **Description**: Upserts (updates or inserts) new licensing rules or documents into the Pinecone vector database. This allows for dynamic updating of the knowledge base used by the compliance agents.
+*   **Input**: `docs` (List[UploadFile]) - A list of `.docx` files containing the rules to be upserted.
+*   **Output**: A JSON object confirming the success of the upsert operation.
+*   **Example Usage**:
+    ```bash
+    curl -X POST "http://localhost:8000/upsert" \
+      -H "accept: application/json" \
+      -H "Content-Type: multipart/form-data" \
+      -F "docs=@./path/to/your/rules.docx"
+    ```
+
 ## Local Development
 
 ### Running Locally
@@ -144,6 +201,13 @@ export OPENAI_API_KEY=your_key_here
 make dev
 ```
 
+### Initial Data Upsert
+To upsert initial RAG (Retrieval Augmented Generation) data to the Pinecone database, use the following command:
+```bash
+make upsert_rag
+```
+This command runs the `ai/rag.py` script with the `--upsert` flag, which is responsible for populating the vector database with necessary information for the AI models.
+
 ### Docker Testing
 ```bash
 make docker
@@ -153,4 +217,3 @@ make docker
 
 ### CloudWatch Logs
 - Lambda logs: `/aws/lambda/apparel_verification_app`
-- API Gateway logs: `/aws/apigateway/apparel_verification_app`

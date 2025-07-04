@@ -125,8 +125,9 @@ def main(args):
     if args.upsert:
         print("Upsert data into the Pinecone index.")
         contents = get_data_from_dir("ai/data")
+        print(f"Found {len(contents)} documents to upsert.")
         upsert_data(index, contents)
-
+        print("Upsert completed.")
 
     print("Query the index for a specific document")
     query = input("Enter your query: ")
