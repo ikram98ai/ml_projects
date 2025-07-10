@@ -59,7 +59,7 @@ class ComplianceOutput(BaseModel):
     violation_reason: str | None
 
 class ImageAnalysisOutput(BaseModel):
-    image_analysis: list[str] = Field(desc= "analysis of the apparel design images, must include the organization name and type in each sentence, write only one sencence per organization if available.")
+    image_analysis: list[str] = Field(desc= "analysis of the apparel design images, include the organization name and type in each sentence, write only one sencence per organization analysis in the apparel design.")
 
 def image_analysis(base64_urls):
     design_analysis =  client.responses.parse(
@@ -97,7 +97,7 @@ def compliance_flow(base64_urls: list[str]):
     
     analysis = image_analysis(base64_urls)
   
-    context = "\n".join([query_index(pinecone_index,sentence)[1] for sentence in analysis[:5]])
+    context = "\n".join([query_index(pinecone_index,sentence)[1] for sentence in analysis[:3]])
 
     licensing_rule_evaluation =  client.beta.chat.completions.parse(
         model="gpt-4o-mini",

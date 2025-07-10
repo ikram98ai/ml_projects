@@ -12,7 +12,7 @@ load_dotenv()
 
 # Initialize clients
 EMBED_MODEL = os.getenv("EMBED_MODEL", "text-embedding-3-small")
-PINECONE_INDEX = os.getenv("PINECONE_INDEX", "apperal-compliance-v2-index")
+PINECONE_INDEX = os.getenv("PINECONE_INDEX", "apperal-compliance-v3-index")
 EMBED_DIM = int(os.getenv("PINECONE_DIM", 1536))
 PINECONE_REGION = os.getenv("PINECONE_REGION", "us-east-1")
 
@@ -38,10 +38,24 @@ def get_index():
     # print('Connected to Pinecone index:', PINECONE_INDEX,'\n', index)
     return index
 
+def chunk_text(text, chunk_size=1000, chunk_overlap=200):
+    """
+    Splits a long text into smaller chunks of a specified size with overlap.
+    """
+    if len(text) <= chunk_size:
+        return [text]
 
-def get_data_from_dir(data_dir)->list[str]:
+    chunks = []
+    start = 0
+    while start < len(text):
+        end = start + chunk_size
+        chunks.append(text[start:end])
+        start += chunk_size - chunk_overlap
+    return chunks
+
+def get_data_from_dir(data_dir)->list[dict]:
     # Initialize lists to store file information
-    contents: list[str] = []
+    contents: list[dict] = []
     # Walk through the directory and process each .docx file
     for root, dirs, files in os.walk(data_dir):
         for file in files:
@@ -52,33 +66,41 @@ def get_data_from_dir(data_dir)->list[str]:
                 doc = Document(file_path)
                 fname = file.split('.doc')[0]
                 content = "\n".join([para.text for para in doc.paragraphs])
-
-                contents.append( parent_dir + ", " + fname + ", " + content)  
+                
+                chunks = chunk_text(content)
+                for chunk in chunks:
+                    contents.append({
+                        "text": chunk,
+                        "source": f"{parent_dir}, {fname}"
+                    })
     return contents
 
-def upsert_data(index, contents: list[str]) -> None:
-    print(f"Upserting data with length {len(contents)} into Pinecone index...")
+def upsert_data(index, chunks: list[dict]) -> str:
+    print(f"Upserting {len(chunks)} chunks into Pinecone index...")
     
     try:
         batch_size = 32
-        for i in range(0, len(contents), batch_size):
-            i_end = min(i + batch_size, len(contents))
-            lines_batch = contents[i: i_end]
+        for i in range(0, len(chunks), batch_size):
+            i_end = min(i + batch_size, len(chunks))
+            batch = chunks[i:i_end]
+            
+            lines_batch = [item['text'] for item in batch]
             ids_batch = [str(n) for n in range(i, i_end)]
             
             # Create embeddings for the current batch.
-            res = client.embeddings.create(input=[line[:1536] for line in lines_batch], model=EMBED_MODEL)
+            res = client.embeddings.create(input=lines_batch, model=EMBED_MODEL)
             embeds = [record.embedding for record in res.data]
             
             # Prepare metadata.
             meta = []
-            for content in contents[i:i_end]:
-                meta.append({"Content": content})
+            for item in batch:
+                meta.append({"Content": item['text'], "source": item['source']})
+            
             # Upsert the batch into Pinecone.
             vectors = list(zip(ids_batch, embeds, meta))
             res = index.upsert(vectors=vectors)
         print("Upsert completed successfully.")
-        return f"Upsert {len(contents)} files, completed successfully."
+        return f"Upsert of {len(chunks)} chunks completed successfully."
     except Exception as e:
         print(f"Error during upsert: {e}")
         return f"Error during upsert: {e}"
@@ -99,7 +121,7 @@ def query_index(index, query_text)-> tuple[float, str]:
     
     # Query the index and return top_k matches.
     try:
-        res = index.query(vector=[query_embedding], top_k=1, include_metadata=True)
+        res = index.query(vector=[query_embedding], top_k=7, include_metadata=True)
     except Exception as e:
         print(f"Pinecone query failed: {str(e)}")
         raise ConnectionError(f"Query execution failed: {str(e)}")
@@ -107,15 +129,23 @@ def query_index(index, query_text)-> tuple[float, str]:
 
     context ="" 
     confidence_score=0
+    sources = []
     for i,m in enumerate(res['matches']):
         content = m['metadata'].get('Content', '')
+        source = m['metadata'].get('source', 'Unknown source')
         score = m['score']
-        context+= f"{content}\n"
-        print(f"License: {i+1}; Score: {score}; Content: {content[:100]}\n")
+        context+= f"Source: {source}\nContent: {content}\n\n"
+        print(f"Match {i+1}; Score: {score}; Source: {source}; Content: {content[:100]}\n")
         confidence_score+=score
-    # return f"Confidence score: {int(rag_score/(i+1)*100)}\n{context}"
-    return confidence_score/(i+1), "LICENSING RULES FOR DETECTED ORGANIZATION: " + context
+        if source not in sources:
+            sources.append(source)
 
+    final_context = "LICENSING RULES FOR DETECTED ORGANIZATION:\n"
+    for match in res['matches']:
+        final_context += f"Source: {match['metadata'].get('source', 'N/A')}\n"
+        final_context += f"{match['metadata'].get('Content', '')}\n---\n"
+
+    return confidence_score/(i+1), final_context
 
 
 def main(args):
