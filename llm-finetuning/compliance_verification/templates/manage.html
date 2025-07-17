@@ -62,35 +62,6 @@
     {% endfor %}
 </div>
 
-<div class="mt-8 flex justify-between items-center">
-    <form method="get" action="/manage" class="flex items-center gap-2">
-        <label for="top_k" class="text-sm text-gray-600">Items per page:</label>
-        <select name="top_k" id="top_k" onchange="this.form.submit()" class="rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
-            <option value="10" {% if top_k == 10 %}selected{% endif %}>10</option>
-            <option value="20" {% if top_k == 20 %}selected{% endif %}>20</option>
-            <option value="50" {% if top_k == 50 %}selected{% endif %}>50</option>
-            <option value="100" {% if top_k == 100 %}selected{% endif %}>100</option>
-        </select>
-    </form>
-    <nav class="inline-flex rounded-md shadow">
-        <a href="?page=1&top_k={{ top_k }}" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-l-md hover:bg-gray-50 {% if page == 1 %}cursor-not-allowed opacity-50{% endif %}">
-            &laquo; First
-        </a>
-        <a href="?page={{ page - 1 }}&top_k={{ top_k }}" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border-t border-b border-gray-300 hover:bg-gray-50 {% if page <= 1 %}cursor-not-allowed opacity-50{% endif %}">
-            &lsaquo; Previous
-        </a>
-        <span class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border-t border-b border-gray-300">
-            Page {{ page }} of {{ total_pages }}
-        </span>
-        <a href="?page={{ page + 1 }}&top_k={{ top_k }}" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border-t border-b border-gray-300 hover:bg-gray-50 {% if page >= total_pages %}cursor-not-allowed opacity-50{% endif %}">
-            Next &rsaquo;
-        </a>
-        <a href="?page={{ total_pages }}&top_k={{ top_k }}" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-r-md hover:bg-gray-50 {% if page == total_pages %}cursor-not-allowed opacity-50{% endif %}">
-            Last &raquo;
-        </a>
-    </nav>
-</div>
-
 {% else %}
 <div class="bg-white rounded-xl shadow-md p-12 text-center">
     <div class="max-w-md mx-auto">
