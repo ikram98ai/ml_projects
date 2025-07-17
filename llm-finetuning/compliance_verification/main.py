@@ -92,7 +92,7 @@ async def add_new_document(
     if file and file.filename.endswith('.docx'):
         contents = await get_docx_contents([file])
         for doc_content in contents:
-            text_chunks = chunk_text(doc_content['text'])
+            text_chunks = chunk_text(doc_content)
             for chunk in text_chunks:
                 chunks.append({
                     "text": chunk,
