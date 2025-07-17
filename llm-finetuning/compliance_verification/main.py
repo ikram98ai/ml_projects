@@ -1,7 +1,6 @@
 from fastapi import FastAPI, UploadFile, HTTPException, File, Request, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse, HTMLResponse
-from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from mangum import Mangum
 from typing import List, Optional
@@ -18,9 +17,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
-# Setup templates and static files
-app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
 @app.get("/", response_class=RedirectResponse)
@@ -205,7 +201,3 @@ async def upsert_into_pinecone(docs: List[UploadFile] = File(..., description="U
 
 
 handler = Mangum(app)
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
