@@ -136,8 +136,9 @@ def update_vector(index, vector_id, text, source):
 def get_vector(index, vector_id):
     """Retrieve a vector by its ID"""
     res = index.fetch(ids=[vector_id])
-    vectors = res.get('vectors', {})
-    return vectors.get(vector_id)
+    if not res.vectors:
+        return None
+    return res.vectors.get(vector_id)
 
 
 
