@@ -66,7 +66,7 @@
     <form method="get" action="/manage" class="flex items-center gap-2">
         <label for="top_k" class="text-sm text-gray-600">Items per page:</label>
         <select name="top_k" id="top_k" onchange="this.form.submit()" class="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 transition duration-200 ease-in-out">
-            <option value="10" {% if top_k == 10 %}selected{% endif %}>10</option>
+            <option value="10" {% if top_k == 12 %}selected{% endif %}>12</option>
             <option value="20" {% if top_k == 20 %}selected{% endif %}>20</option>
             <option value="50" {% if top_k == 50 %}selected{% endif %}>50</option>
             <option value="100" {% if top_k == 100 %}selected{% endif %}>100</option>

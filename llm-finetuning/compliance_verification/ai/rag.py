@@ -141,17 +141,34 @@ def get_vector(index, vector_id):
     return res.vectors.get(vector_id)
 
 
-def get_all_vectors(index, namespace=''):
-    """Retrieve all vectors from a namespace"""
-    all_vectors = []
-    # Call describe_index_stats to get the total number of vectors
-    total_vectors = index.describe_index_stats()['total_vector_count']
+def get_paginated_vectors(index, page=1, per_page=12):
+
+    # Get index statistics
+    stats = index.describe_index_stats()
+    total_vectors = stats['total_vector_count']
+    
+    # Calculate pagination boundaries
+    offset = (page - 1) * per_page
+    remaining = total_vectors - offset
+
+    if remaining <= 0:
+        return []
+    
+    top_k = min(per_page, remaining, 10000)
+    
     # Create a dummy query vector
-    dummy_vector = [0.0] * 1536  # Assuming the dimension is 1536
-    # Query the index to get all vectors
-    res = index.query(vector=dummy_vector, top_k=total_vectors, include_metadata=True)
-    all_vectors.extend(res['matches'])
-    return all_vectors
+    dummy_vector = [0.0] * EMBED_DIM
+    
+    # Query with stable ordering using namespace and pagination
+    res = index.query(
+        vector=dummy_vector,
+        top_k=top_k,
+        offset=offset,
+        include_metadata=True,
+        include_values=False
+    )
+    
+    return res['matches'], total_vectors
 
 def query_index(index, query_text, top_k=7)-> tuple[float, str]:
     # Generate an embedding for the query.
