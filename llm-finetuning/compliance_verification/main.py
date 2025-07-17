@@ -6,7 +6,7 @@ from fastapi.templating import Jinja2Templates
 from mangum import Mangum
 from typing import List, Optional
 from ai.ai_agents import compliance_agent_runner, trademark_agent_runner, compliance_flow
-from ai.rag import get_index, upsert_data, search_index, delete_vectors, get_vector, update_vector, chunk_text
+from ai.rag import get_index, upsert_data, search_index, delete_vectors, get_all_vectors, get_vector, update_vector, chunk_text
 from utils import get_base64_urls, get_docx_contents
 import traceback
 
@@ -32,15 +32,34 @@ async def root():
 async def manage_rag(
     request: Request, 
     q: Optional[str] = None, 
-    status: Optional[str] = None
+    status: Optional[str] = None,
+    page: int = 1,
+    top_k: int = 20
 ):
     index = get_index()
     matches = []
+    total_pages = 1
     if q:
-        matches = search_index(index, q, top_k=20)
+        matches = search_index(index, q, top_k=top_k)
+    else:
+        all_vectors = get_all_vectors(index)
+        total_items = len(all_vectors)
+        total_pages = (total_items + top_k - 1) // top_k
+        start = (page - 1) * top_k
+        end = start + top_k
+        matches = all_vectors[start:end]
+
     return templates.TemplateResponse(
         "manage.html",
-        {"request": request, "query": q, "matches": matches, "status": status}
+        {
+            "request": request, 
+            "query": q, 
+            "matches": matches, 
+            "status": status,
+            "page": page,
+            "top_k": top_k,
+            "total_pages": total_pages
+        }
     )
 
 @app.get("/manage/delete/{vector_id}")
