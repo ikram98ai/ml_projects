@@ -1,15 +1,16 @@
-from fastapi import FastAPI, UploadFile, HTTPException,File
+from fastapi import FastAPI, UploadFile, HTTPException, File, Request, Form
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, HTMLResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 from mangum import Mangum
-from typing import List
+from typing import List, Optional
 from ai.ai_agents import compliance_agent_runner, trademark_agent_runner, compliance_flow
-from ai.rag import get_index, upsert_data
+from ai.rag import get_index, upsert_data, search_index, delete_vectors, get_vector, update_vector, chunk_text
 from utils import get_base64_urls, get_docx_contents
 import traceback
 
-
-app = FastAPI(version="2.9.2")
+app = FastAPI(version="3.1.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -18,10 +19,99 @@ app.add_middleware(
 )
 
 
-@app.get("/")
-async def root():
-    return RedirectResponse("/docs")
+# Setup templates and static files
+app.mount("/static", StaticFiles(directory="static"), name="static")
+templates = Jinja2Templates(directory="templates")
 
+@app.get("/", response_class=RedirectResponse)
+async def root():
+    return RedirectResponse("/manage")
+
+
+@app.get("/manage", response_class=HTMLResponse)
+async def manage_rag(
+    request: Request, 
+    q: Optional[str] = None, 
+    status: Optional[str] = None
+):
+    index = get_index()
+    matches = []
+    if q:
+        matches = search_index(index, q, top_k=20)
+    return templates.TemplateResponse(
+        "manage.html",
+        {"request": request, "query": q, "matches": matches, "status": status}
+    )
+
+@app.get("/manage/delete/{vector_id}")
+async def delete_document(vector_id: str):
+    index = get_index()
+    delete_vectors(index, [vector_id])
+    return RedirectResponse(url="/manage?status=deleted")
+
+@app.get("/manage/edit/{vector_id}", response_class=HTMLResponse)
+async def edit_document_form(request: Request, vector_id: str):
+    index = get_index()
+    vector = get_vector(index, vector_id)
+    if not vector:
+        raise HTTPException(404, "Vector not found")
+    metadata = vector['metadata']
+    return templates.TemplateResponse(
+        "edit.html",
+        {
+            "request": request,
+            "vector_id": vector_id,
+            "text": metadata['Content'],
+            "source": metadata['source']
+        }
+    )
+
+@app.post("/manage/edit/{vector_id}")
+async def update_document(
+    vector_id: str,
+    text: str = Form(...),
+    source: str = Form(...)
+):
+    index = get_index()
+    update_vector(index, vector_id, text, source)
+    return RedirectResponse(url="/manage?status=updated", status_code=303)
+
+@app.get("/manage/add", response_class=HTMLResponse)
+async def add_document_form(request: Request):
+    return templates.TemplateResponse("add.html", {"request": request})
+
+@app.post("/manage/add")
+async def add_new_document(
+    source: str = Form(...),
+    text: Optional[str] = Form(None),
+    file: Optional[UploadFile] = File(None)
+):
+    index = get_index()
+    chunks = []
+    
+    if file and file.filename.endswith('.docx'):
+        contents = await get_docx_contents([file])
+        for doc_content in contents:
+            text_chunks = chunk_text(doc_content['text'])
+            for chunk in text_chunks:
+                chunks.append({
+                    "text": chunk,
+                    "source": source
+                })
+    elif text:
+        text_chunks = chunk_text(text)
+        for chunk in text_chunks:
+            chunks.append({
+                "text": chunk,
+                "source": source
+            })
+    else:
+        raise HTTPException(400, "Either text or DOCX file must be provided")
+    
+    if chunks:
+        upsert_data(index, chunks)
+    
+    return RedirectResponse(url="/manage?status=added", status_code=303)
 
 
 @app.post("/compliance_flow")
@@ -96,3 +186,7 @@ async def upsert_into_pinecone(docs: List[UploadFile] = File(..., description="U
 
 
 handler = Mangum(app)
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)

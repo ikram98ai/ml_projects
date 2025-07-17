@@ -38,7 +38,7 @@ def get_index():
     # print('Connected to Pinecone index:', PINECONE_INDEX,'\n', index)
     return index
 
-def chunk_text(text, chunk_size=1000, chunk_overlap=200):
+def chunk_text(text:str, chunk_size=1000, chunk_overlap=200):
     """
     Splits a long text into smaller chunks of a specified size with overlap.
     """
@@ -106,7 +106,42 @@ def upsert_data(index, chunks: list[dict]) -> str:
         return f"Error during upsert: {e}"
 
 
-def query_index(index, query_text)-> tuple[float, str]:
+def search_index(index, query_text, top_k=10, filter=None):
+    """Search index and return matches with metadata"""
+    response = client.embeddings.create(input=query_text, model=EMBED_MODEL)
+    query_embedding = response.data[0].embedding
+    
+    query_params = {
+        "vector": [query_embedding],
+        "top_k": top_k,
+        "include_metadata": True
+    }
+    
+    if filter:
+        query_params["filter"] = filter
+        
+    res = index.query(**query_params)
+    return res['matches']
+
+def delete_vectors(index, vector_ids):
+    """Delete vectors by their IDs"""
+    index.delete(ids=vector_ids)
+
+def update_vector(index, vector_id, text, source):
+    """Update a vector with new text and metadata"""
+    res = client.embeddings.create(input=[text], model=EMBED_MODEL)
+    embedding = res.data[0].embedding
+    index.upsert(vectors=[(vector_id, embedding, {"Content": text, "source": source})])
+
+def get_vector(index, vector_id):
+    """Retrieve a vector by its ID"""
+    res = index.fetch(ids=[vector_id])
+    vectors = res.get('vectors', {})
+    return vectors.get(vector_id)
+
+
+
+def query_index(index, query_text, top_k=7)-> tuple[float, str]:
     # Generate an embedding for the query.
     print(f"Querying index with: {query_text[:100]}")
     # index = get_index()
@@ -121,7 +156,7 @@ def query_index(index, query_text)-> tuple[float, str]:
     
     # Query the index and return top_k matches.
     try:
-        res = index.query(vector=[query_embedding], top_k=7, include_metadata=True)
+        res = index.query(vector=[query_embedding], top_k=top_k, include_metadata=True)
     except Exception as e:
         print(f"Pinecone query failed: {str(e)}")
         raise ConnectionError(f"Query execution failed: {str(e)}")
