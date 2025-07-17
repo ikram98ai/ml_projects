@@ -141,6 +141,17 @@ def get_vector(index, vector_id):
     return res.vectors.get(vector_id)
 
 
+def get_all_vectors(index, namespace=''):
+    """Retrieve all vectors from a namespace"""
+    all_vectors = []
+    # Call describe_index_stats to get the total number of vectors
+    total_vectors = index.describe_index_stats()['total_vector_count']
+    # Create a dummy query vector
+    dummy_vector = [0.0] * 1536  # Assuming the dimension is 1536
+    # Query the index to get all vectors
+    res = index.query(vector=dummy_vector, top_k=total_vectors, include_metadata=True)
+    all_vectors.extend(res['matches'])
+    return all_vectors
 
 def query_index(index, query_text, top_k=7)-> tuple[float, str]:
     # Generate an embedding for the query.
