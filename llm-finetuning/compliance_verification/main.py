@@ -4,12 +4,12 @@ from fastapi.responses import RedirectResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
 from mangum import Mangum
 from typing import List, Optional
-from ai.ai_agents import compliance_agent_runner, trademark_agent_runner, compliance_flow
+from ai.ai_agents import trademark_agent_runner, compliance_flow
 from ai.rag import get_index, upsert_data, search_index, delete_vectors, get_paginated_vectors, get_vector, update_vector, chunk_text
 from utils import get_base64_urls, get_docx_contents
 import traceback
 
-app = FastAPI(version="3.1.1")
+app = FastAPI(version="3.2.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -124,8 +124,25 @@ async def add_new_document(
     
     return RedirectResponse(url="/manage?status=added", status_code=303)
 
+@app.post("/compliance-detect")
+async def compliance_verification_flow(images: List[UploadFile] = File(..., description="Upload one or two image files for compliance verification.")):
+    try:
+        base64_urls = await get_base64_urls(images[:2])
+        compliance_output = await compliance_flow(base64_urls)
+        detection_output = await trademark_agent_runner(base64_urls)
+        output = compliance_output | detection_output
+    except HTTPException as e:
+        traceback.print_exc()
+        raise e
+    except Exception as e:
+        print(f"Error during compliance verification: {e}")
+        traceback.print_exc()
+        raise HTTPException(500,str(e))
+    return output
 
-@app.post("/compliance_flow")
+
+
+@app.post("/compliance")
 async def compliance_verification_flow(images: List[UploadFile] = File(..., description="Upload one or two image files for compliance verification.")):
     try:
         base64_urls = await get_base64_urls(images[:2])
@@ -140,24 +157,6 @@ async def compliance_verification_flow(images: List[UploadFile] = File(..., desc
         traceback.print_exc()
         raise HTTPException(500,str(e))
     return output
-
-
-@app.post("/compliance_agent")
-async def compliance_verification_agent(images: List[UploadFile] = File(..., description="Upload one or two image files for compliance verification.")):
-    try:
-        base64_urls = await get_base64_urls(images[:2])
-        output = await compliance_agent_runner(base64_urls)
-        # output = compliance(base64_urls)
-
-    except HTTPException as e:
-        traceback.print_exc()
-        raise e
-    except Exception as e:
-        print(f"Error during compliance verification: {e}")
-        traceback.print_exc()
-        raise HTTPException(500,str(e))
-    return output
-
 
 
 @app.post("/trademark")

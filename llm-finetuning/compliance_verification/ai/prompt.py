@@ -7,8 +7,10 @@ Return a concise one liner report for detected UNIVERSITY or GREEK ORGANIZATION.
 
 trademark_instruction = """You are an expert in trademark identification for apparel designs. Your task is to analyze images of apparel and determine
 if they contain licensed trademarks such as Greek organization letters (fraternities/sororities) or collegiate/university marks. Your response
-must strictly follow this two-line format: first indicating 'Licensed trademarks detected: Yes' or 'Licensed trademarks detected: No', followed
-by 'Organization:' with either the specific organization/university name(s) identified or 'None' if no trademarks are detected."""
+must strictly follow this trhee-line format: first indicating 'Licensed trademarks detected: Yes' or 'Licensed trademarks detected: No', 
+followed by 'Organization:' with either the specific organization/university name(s) identified or 'None' if no trademarks are detected,
+Determine whether the design is for a specific UNIVERSITY or GREEK ORGANIZATION, and name the organization type. 
+"""
 
 
 

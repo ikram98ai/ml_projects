@@ -4,12 +4,12 @@ from ai.rag import get_index, query_index
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 from typing import Literal
-from openai import OpenAI
+from openai import AsyncOpenAI
 from ai.prompt import compliance_instruction, trademark_instruction, design_analysis_prompt, system_prompt, general_rules
 import math
 load_dotenv()
 
-client = OpenAI()
+client = AsyncOpenAI()
 pinecone_index = get_index()
 
 def get_content_list(base64_urls: list[str]):
@@ -61,8 +61,8 @@ class ComplianceOutput(BaseModel):
 class ImageAnalysisOutput(BaseModel):
     image_analysis: list[str] = Field(desc= "analysis of the apparel design images, include the organization name and type in each sentence, write only one sencence per organization analysis in the apparel design.")
 
-def image_analysis(base64_urls):
-    design_analysis =  client.responses.parse(
+async def image_analysis(base64_urls):
+    design_analysis =  await client.responses.parse(
         model="gpt-4o-mini",
         input=[{
             "role": "user",
@@ -93,13 +93,13 @@ def search_licensing_rules(query: str) -> str:
 
     return result
 
-def compliance_flow(base64_urls: list[str]):
+async def compliance_flow(base64_urls: list[str]):
     
-    analysis = image_analysis(base64_urls)
+    analysis = await image_analysis(base64_urls)
   
     context = "\n".join([query_index(pinecone_index,sentence)[1] for sentence in analysis[:3]])
 
-    licensing_rule_evaluation =  client.beta.chat.completions.parse(
+    licensing_rule_evaluation = await client.beta.chat.completions.parse(
         model="gpt-4o-mini",
         messages=[{
             "role": "user",
@@ -111,8 +111,8 @@ def compliance_flow(base64_urls: list[str]):
         response_format= ComplianceOutput,
         logprobs=True,
         top_logprobs= 5,
-        temperature=0.0,  # Lower temperature
-        top_p=0.1         # Lower top_p
+        temperature=0.0,  
+        top_p=0.1
     )
 
     print("Licensing rule evaluation response: ")
@@ -121,34 +121,13 @@ def compliance_flow(base64_urls: list[str]):
     return  output
 
 
-async def compliance_agent_runner(base64_urls: list[str]):
-    
-    compliance_agent = Agent(
-        name="Compliance verifier",
-        model="gpt-4o",
-        tools= [search_licensing_rules],
-        instructions=compliance_instruction,
-        output_type=ComplianceOutput,
-        model_settings=ModelSettings(tool_choice="auto", temperature=0.1, top_p=0.1),    
-    )
-
-    analysis = image_analysis(base64_urls)
-
-    result = await Runner.run(compliance_agent, input=[
-        {
-            "role": "user",
-            "content": "Review the following apperal design analysis for compliance with licensing rules. Provide compliance status and violation reason, if any." 
-                     + "\nApperal design analysis: "+ "\n".join(analysis) ,
-        },
-    ])
- 
-    return result.final_output
 
 #############################################################Trademark Detection Agent#############################################################
 
 class TrademarkOutput(BaseModel):
-    trademark_detected: Literal["Yes", "No"]
-    organization: str | None
+    trademark_detected: Literal["Yes", "No"] =Field(desc= "Trademark detection whether there is any organization mention os apparel or not.")
+    organization: str | None = Field(desc= "Name of the organization on the apparel desing.")
+    org_type: Literal["Greek", "University"] | None =Field(desc= "Organization type whether the detected organization is greek or university.")
 
 
 async def trademark_agent_runner(base64_urls: list[str]):
@@ -158,7 +137,7 @@ async def trademark_agent_runner(base64_urls: list[str]):
         model="gpt-4o-mini",
         output_type= TrademarkOutput,
         instructions=trademark_instruction,    
-        # model_settings=ModelSettings(temperature=0.1),
+        model_settings=ModelSettings(temperature=0.1),
     )
     
     result = await Runner.run(trademark_agent, input=[
@@ -167,8 +146,8 @@ async def trademark_agent_runner(base64_urls: list[str]):
             "content": get_content_list(base64_urls),
         },{
             "role": "user",
-            "content": "Examine these apparel images and identify if they contain licensed marks or Greek letters. If yes, name the Greek organization or university associated.",
+            "content": "Examine these apparel images and identify if they contain licensed marks or Greek letters. If yes, name the University or Greek organization associated and it's org_type.",
         },
     ])
     print(f"Trademark detection result: {result.final_output}")
-    return result.final_output
+    return dict(result.final_output)
