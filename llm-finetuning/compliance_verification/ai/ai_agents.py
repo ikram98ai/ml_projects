@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 from typing import Literal
 from openai import AsyncOpenAI
-from ai.prompt import compliance_instruction, trademark_instruction, design_analysis_prompt, system_prompt, general_rules
+from ai.prompt import trademark_instruction, apparel_analysis_prompt, system_prompt, general_rules
 import math
 load_dotenv()
 
@@ -59,7 +59,7 @@ class ComplianceOutput(BaseModel):
     violation_reason: str | None
 
 class ImageAnalysisOutput(BaseModel):
-    image_analysis: list[str] = Field(desc= "analysis of the apparel design images, include the organization name and type in each sentence, write only one sencence per organization analysis in the apparel design.")
+    image_analysis: list[str] = Field(desc= "A list of analysis of the apparel design images, include the organization name and type in each sentence, write only one sencence per organization analysis in the apparel design.")
 
 async def image_analysis(base64_urls):
     design_analysis =  await client.responses.parse(
@@ -70,7 +70,7 @@ async def image_analysis(base64_urls):
         },
         {
             "role": "user",
-            "content": design_analysis_prompt
+            "content": apparel_analysis_prompt
         }],
         text_format=ImageAnalysisOutput
     )
@@ -97,13 +97,13 @@ async def compliance_flow(base64_urls: list[str]):
     
     analysis = await image_analysis(base64_urls)
   
-    context = "\n".join([query_index(pinecone_index,sentence)[1] for sentence in analysis[:3]])
+    licensing_rules = "\n".join([query_index(pinecone_index,sentence)[1] for sentence in analysis[:3]])
 
     licensing_rule_evaluation = await client.beta.chat.completions.parse(
         model="gpt-4o-mini",
         messages=[{
             "role": "user",
-            "content": system_prompt.format(analysis, context + general_rules)
+            "content": system_prompt.format(analysis, general_rules, licensing_rules)
         },{
             "role": "user",
             "content": "Review this apparel design for compliance with general and licensing rules. Provide compliance status and violation reason, if any."
@@ -125,9 +125,9 @@ async def compliance_flow(base64_urls: list[str]):
 #############################################################Trademark Detection Agent#############################################################
 
 class TrademarkOutput(BaseModel):
-    trademark_detected: Literal["Yes", "No"] =Field(desc= "Trademark detection whether there is any organization mention os apparel or not.")
-    organization: str | None = Field(desc= "Name of the organization on the apparel desing.")
-    org_type: Literal["Greek", "University"] | None =Field(desc= "Organization type whether the detected organization is greek or university.")
+    trademark_detected: Literal["Yes", "No"] =Field(desc= "Trademark detection whether there is any organization or university/collegiate mention on apparel or not.")
+    organization: str | None = Field(desc= "Name of the organization or university/collegiate on the apparel design.")
+    org_type: Literal["Greek", "University"] | None =Field(desc= "Organization type whether the detected trademark is greek organization or university/collegiate.")
 
 
 async def trademark_agent_runner(base64_urls: list[str]):

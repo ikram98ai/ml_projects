@@ -23,7 +23,6 @@ templates = Jinja2Templates(directory="templates")
 async def root():
     return RedirectResponse("/manage")
 
-
 @app.get("/manage", response_class=HTMLResponse)
 async def manage_rag(
     request: Request, 
@@ -124,6 +123,8 @@ async def add_new_document(
     
     return RedirectResponse(url="/manage?status=added", status_code=303)
 
+
+
 @app.post("/compliance-detect")
 async def compliance_verification_flow(images: List[UploadFile] = File(..., description="Upload one or two image files for compliance verification.")):
     try:
@@ -141,13 +142,12 @@ async def compliance_verification_flow(images: List[UploadFile] = File(..., desc
     return output
 
 
-
 @app.post("/compliance")
 async def compliance_verification_flow(images: List[UploadFile] = File(..., description="Upload one or two image files for compliance verification.")):
     try:
         base64_urls = await get_base64_urls(images[:2])
         # output = await compliance_agent_runner(base64_urls)
-        output = compliance_flow(base64_urls)
+        output = await compliance_flow(base64_urls)
 
     except HTTPException as e:
         traceback.print_exc()
