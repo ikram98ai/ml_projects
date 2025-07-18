@@ -5,7 +5,7 @@ from fastapi.templating import Jinja2Templates
 from mangum import Mangum
 from typing import List, Optional
 from ai.ai_agents import trademark_agent_runner, compliance_flow
-from ai.rag import get_index, upsert_data, search_index, delete_vectors, get_paginated_vectors, get_vector, update_vector, chunk_text
+from ai.rag import get_index, upsert_data, search_index, delete_vectors, get_paginated_vectors, get_vector, update_vector
 from utils import get_base64_urls, get_docx_contents
 import traceback
 
@@ -94,32 +94,28 @@ async def add_document_form(request: Request):
 async def add_new_document(
     source: str = Form(...),
     text: Optional[str] = Form(None),
-    file: Optional[UploadFile] = File(None)
+    files: Optional[List[UploadFile]] = File(None)
 ):
     index = get_index()
-    chunks = []
+    contents = []
     
-    if file and file.filename.endswith('.docx'):
-        contents = await get_docx_contents([file])
-        for doc_content in contents:
-            text_chunks = chunk_text(doc_content)
-            for chunk in text_chunks:
-                chunks.append({
-                    "text": chunk,
-                    "source": source
-                })
-    elif text:
-        text_chunks = chunk_text(text)
-        for chunk in text_chunks:
-            chunks.append({
-                "text": chunk,
+    if files:
+        doc_contents = await get_docx_contents([files])
+        for doc_content in doc_contents:
+            contents.append({
+                "text": doc_content,
                 "source": source
             })
+    elif text:
+        contents.append({
+            "text": text,
+            "source": source
+        })
     else:
         raise HTTPException(400, "Either text or DOCX file must be provided")
     
-    if chunks:
-        upsert_data(index, chunks)
+    if contents:
+        upsert_data(index, contents)
     
     return RedirectResponse(url="/manage?status=added", status_code=303)
 
@@ -173,25 +169,6 @@ async def trademark_detection(images: List[UploadFile] = File(..., description="
         traceback.print_exc()
         raise HTTPException(500,str(e))
     return {"output": output }
-
-
-@app.post("/upsert")
-async def upsert_into_pinecone(docs: List[UploadFile] = File(..., description="Upload one or more docx files to upsert into the pinecone index.")):
-    try:
-        contents = await get_docx_contents(docs)
-        index = get_index()
-
-        output = upsert_data(index, contents)
-
-    except HTTPException as e:
-        traceback.print_exc()
-        raise e
-
-    except Exception as e:
-        print(f"Error during upserting data to pinecone index: {e}")
-        traceback.print_exc()
-        raise HTTPException(500,str(e))
-    return output
 
 
 

@@ -5,14 +5,13 @@ from pinecone import Pinecone
 from pinecone import ServerlessSpec
 from dotenv import load_dotenv
 import argparse
-import traceback
 
 load_dotenv()
 
 
 # Initialize clients
 EMBED_MODEL = os.getenv("EMBED_MODEL", "text-embedding-3-small")
-PINECONE_INDEX = os.getenv("PINECONE_INDEX", "apperal-compliance-v3-index")
+PINECONE_INDEX = os.getenv("PINECONE_INDEX", "apperal-compliance-openai-index")
 EMBED_DIM = int(os.getenv("PINECONE_DIM", 1536))
 PINECONE_REGION = os.getenv("PINECONE_REGION", "us-east-1")
 
@@ -38,20 +37,20 @@ def get_index():
     # print('Connected to Pinecone index:', PINECONE_INDEX,'\n', index)
     return index
 
-def chunk_text(text:str, chunk_size=1000, chunk_overlap=200):
-    """
-    Splits a long text into smaller chunks of a specified size with overlap.
-    """
-    if len(text) <= chunk_size:
-        return [text]
+# def chunk_text(text:str, chunk_size=1000, chunk_overlap=200):
+#     """
+#     Splits a long text into smaller chunks of a specified size with overlap.
+#     """
+#     if len(text) <= chunk_size:
+#         return [text]
 
-    chunks = []
-    start = 0
-    while start < len(text):
-        end = start + chunk_size
-        chunks.append(text[start:end])
-        start += chunk_size - chunk_overlap
-    return chunks
+#     chunks = []
+#     start = 0
+#     while start < len(text):
+#         end = start + chunk_size
+#         chunks.append(text[start:end])
+#         start += chunk_size - chunk_overlap
+#     return chunks
 
 def get_data_from_dir(data_dir)->list[dict]:
     # Initialize lists to store file information
@@ -67,22 +66,22 @@ def get_data_from_dir(data_dir)->list[dict]:
                 fname = file.split('.doc')[0]
                 content = "\n".join([para.text for para in doc.paragraphs])
                 
-                chunks = chunk_text(content)
-                for chunk in chunks:
-                    contents.append({
-                        "text": chunk,
-                        "source": f"{parent_dir}, {fname}"
-                    })
+                # chunks = chunk_text(content)
+                # for chunk in chunks:
+                contents.append({
+                    "text": content,
+                    "source": f"{parent_dir}, {fname}"
+                })
     return contents
 
-def upsert_data(index, chunks: list[dict]) -> str:
-    print(f"Upserting {len(chunks)} chunks into Pinecone index...")
+def upsert_data(index, contents: list[dict]) -> str:
+    print(f"Upserting {len(contents)} documents into Pinecone index...")
     
     try:
         batch_size = 32
-        for i in range(0, len(chunks), batch_size):
-            i_end = min(i + batch_size, len(chunks))
-            batch = chunks[i:i_end]
+        for i in range(0, len(contents), batch_size):
+            i_end = min(i + batch_size, len(contents))
+            batch = contents[i:i_end]
             
             lines_batch = [item['text'] for item in batch]
             ids_batch = [str(n) for n in range(i, i_end)]
@@ -100,7 +99,7 @@ def upsert_data(index, chunks: list[dict]) -> str:
             vectors = list(zip(ids_batch, embeds, meta))
             res = index.upsert(vectors=vectors)
         print("Upsert completed successfully.")
-        return f"Upsert of {len(chunks)} chunks completed successfully."
+        return f"Upsert of {len(contents)} documents completed successfully."
     except Exception as e:
         print(f"Error during upsert: {e}")
         return f"Error during upsert: {e}"
@@ -170,7 +169,7 @@ def get_paginated_vectors(index, page=1, per_page=12):
     
     return res['matches'], total_vectors
 
-def query_index(index, query_text, top_k=7)-> tuple[float, str]:
+def query_index(index, query_text, top_k=5)-> tuple[float, str]:
     # Generate an embedding for the query.
     print(f"Querying index with: {query_text[:100]}")
     # index = get_index()
@@ -191,23 +190,14 @@ def query_index(index, query_text, top_k=7)-> tuple[float, str]:
         raise ConnectionError(f"Query execution failed: {str(e)}")
         
 
-    context ="" 
-    confidence_score=0
-    sources = []
-    for i,m in enumerate(res['matches']):
-        content = m['metadata'].get('Content', '')
-        source = m['metadata'].get('source', 'Unknown source')
-        score = m['score']
-        context+= f"Source: {source}\nContent: {content}\n\n"
-        print(f"Match {i+1}; Score: {score}; Source: {source}; Content: {content[:100]}\n")
-        confidence_score+=score
-        if source not in sources:
-            sources.append(source)
-
     final_context = "LICENSING RULES FOR DETECTED ORGANIZATION:\n"
-    for match in res['matches']:
+    confidence_score=0
+
+    for i, match in enumerate(res['matches']):
         final_context += f"Source: {match['metadata'].get('source', 'N/A')}\n"
         final_context += f"{match['metadata'].get('Content', '')}\n---\n"
+        score = match['score']
+        confidence_score+=score
 
     return confidence_score/(i+1), final_context
 
@@ -223,11 +213,6 @@ def main(args):
         upsert_data(index, contents)
         print("Upsert completed.")
 
-    print("Query the index for a specific document")
-    query = input("Enter your query: ")
-    result = query_index(index, query)  
-    
-    print(result)
 
 
 if __name__ == "__main__":
