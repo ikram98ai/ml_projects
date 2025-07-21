@@ -121,8 +121,8 @@ async def add_new_document(
 
 
 
-@app.post("/compliance-detect")
-async def compliance_verification_flow(images: List[UploadFile] = File(..., description="Upload one or two image files for compliance verification.")):
+@app.post("/compliance-trademark-detection")
+async def compliance_and_trademark_verification(images: List[UploadFile] = File(..., description="Upload one or two image files for compliance verification.")):
     try:
         base64_urls = await get_base64_urls(images[:2])
         compliance_output = await compliance_flow(base64_urls)
