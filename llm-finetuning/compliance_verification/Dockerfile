@@ -6,16 +6,15 @@ COPY requirements.txt ${LAMBDA_TASK_ROOT}
 # Install packages
 RUN pip install -r requirements.txt
 
-# Create directory for NLTK data with WRITE permissions
-RUN mkdir -p /usr/share/nltk_data && chmod a+rwx /usr/share/nltk_data
-
-# Download REQUIRED NLTK datasets
-RUN python -m nltk.downloader -d /usr/share/nltk_data punkt stopwords
-
-# Set environment variable
+# Create a directory for NLTK data and set permissions
+RUN mkdir -p /usr/share/nltk_data
+# Download NLTK data to the created directory
+RUN python -c "import nltk; nltk.download('punkt_tab', download_dir='/usr/share/nltk_data')"
+RUN python -c "import nltk; nltk.download('stopwords', download_dir='/usr/share/nltk_data')"
+# Set the NLTK_DATA environment variable
 ENV NLTK_DATA=/usr/share/nltk_data
 
-# Copy application code
+# Copy function code
 COPY . ${LAMBDA_TASK_ROOT}
 
 CMD [ "main.handler" ]
