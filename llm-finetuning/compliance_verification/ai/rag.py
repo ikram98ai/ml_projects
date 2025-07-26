@@ -114,26 +114,6 @@ def upsert_data(contents: list[dict]) -> str:
         print(f"Error during upsert: {e}")
         return f"Error during upsert: {e}"
 
-
-def search_index(query_text, top_k=10, filter=None):
-    """Search index and return matches with metadata"""
-    index = pc.Index(PINECONE_INDEX)
-
-    response = client.embeddings.create(input=query_text, model=EMBED_MODEL)
-    query_embedding = response.data[0].embedding
-    
-    query_params = {
-        "vector": [query_embedding],
-        "top_k": top_k,
-        "include_metadata": True
-    }
-    
-    if filter:
-        query_params["filter"] = filter
-        
-    res = index.query(**query_params)
-    return res['matches']
-
 def delete_vectors(vector_ids):
     """Delete vectors by their IDs"""
     index = pc.Index(PINECONE_INDEX)
@@ -146,7 +126,24 @@ def update_vector(vector_id, text, source):
 
     res = client.embeddings.create(input=[text], model=EMBED_MODEL)
     embedding = res.data[0].embedding
-    index.upsert(vectors=[(vector_id, embedding, {"Content": text, "source": source})])
+
+    bm25 = BM25Encoder()
+    bm25 = bm25.load(path=BM25_ENCODER_PATH)
+
+    sparse_embeds = bm25.encode_documents(text)
+
+    # Prepare metadata.
+    meta = {"Content": text, "source": source}
+
+    # Upsert the batch into Pinecone.
+    vectors = [ {
+                "id": vector_id,
+                "values": embedding,
+                "sparse_values": sparse_embeds,
+                "metadata": meta,
+            }]
+
+    index.upsert(vectors=vectors)
 
 def get_vector(vector_id):
     """Retrieve a vector by its ID"""
@@ -156,7 +153,6 @@ def get_vector(vector_id):
     if not res.vectors:
         return None
     return res.vectors.get(vector_id)
-
 
 def get_paginated_vectors(page=1, per_page=12):
     index = pc.Index(PINECONE_INDEX)
@@ -187,42 +183,134 @@ def get_paginated_vectors(page=1, per_page=12):
     
     return res['matches'], total_vectors
 
-def query_index(query_text, top_k=5)-> tuple[float, str]:
-    index = pc.Index(PINECONE_INDEX)
-    print(f"Querying index with: {query_text[:100]}")
-    try:
-        # Generate an embedding for the query.
-        response = client.embeddings.create(input=query_text, model=EMBED_MODEL)
-        if not response or not response.data or not response.data[0].embedding:
-            raise ValueError("Embedding generation returned no data.")
-        query_embedding = response.data[0].embedding
-    except Exception as e:
-        print(f"Failed to create query embedding: {str(e)}")
-        raise ConnectionError(f"Embedding generation failed: {str(e)}")
+from pydantic import BaseModel
+from typing import List
+
+class RerankId(BaseModel):
+    relevant_ids: List[int]
     
-    # Query the index and return top_k matches.
-    try:
-        res = index.query(vector=[query_embedding], top_k=top_k, include_metadata=True)
-    except Exception as e:
-        print(f"Pinecone query failed: {str(e)}")
-        raise ConnectionError(f"Query execution failed: {str(e)}")
-        
+def llm_reranker(candidates, query_text):
+    # 3. Rerank with OpenAI
+    reranked = client.responses.parse(
+        model="gpt-4o-mini",
+        input=[
+            {"role": "system", "content": "Rank these passages by relevance to the query. Return IDs in order of most relevance and only return the relevant passages ids."},
+            {"role": "user", "content": f"Query: {query_text}\n\nPassages:\n" +
+                "\n".join([f"Id {m.id}: {m.metadata['Content'][:500]}" for m in candidates])}
+        ],
+        temperature=0.0,
+        max_output_tokens=500,
+        text_format=RerankId
+    )
 
-    final_context = "LICENSING RULES FOR DETECTED ORGANIZATION:\n"
-    confidence_score=0
+    # 4. Process reranking results
+    ordered_ids = []
+    for id in reranked.output_parsed.relevant_ids:
+        ordered_ids.append(id)
+    
 
-    for i, match in enumerate(res['matches']):
+    # 5. Final sorted results
+    id_to_item = {int(m.id): m for m in candidates}
+    final_results = []
+
+    print("Relevance Ids: ", ordered_ids)
+    print("Document Ids:: ",id_to_item.keys())
+
+    for rid in ordered_ids:
+        if rid in id_to_item:
+            print("Rid: ", rid)
+            item = id_to_item[rid]
+            final_results.append(item)
+    
+    # print("Final results: ", final_results)
+    
+    return final_results
+
+def reranker(candidates, query_text):
+    documents = [ {"id":m.id, "text":m.metadata.get('Content')} for m in candidates]
+
+    result = pc.inference.rerank(
+        model="bge-reranker-v2-m3",
+        query=query_text,
+        documents=documents,
+        rank_fields=["text"],
+        top_n=10,
+        return_documents=True,
+        parameters={
+            "truncate": "END"
+        }
+    )
+
+    ordered_ids = []
+    for item in result.data:
+        ordered_ids.append(item.document.id)
+    
+
+    id_to_item = {m.id: m for m in candidates}
+
+    # print("Relevance Ids: ", ordered_ids)
+    # print("Document Ids:: ",id_to_item.keys())
+
+    final_results = []
+    for rid in ordered_ids:
+        if rid in id_to_item:
+            item = id_to_item[rid]
+            final_results.append(item)
+    
+    return final_results
+
+
+def search_index(query_text, top_k=5, rerank=True, filter=None) -> list[dict]:
+    """Search index and return matches with metadata"""
+    index = pc.Index(PINECONE_INDEX)
+
+    # 1. Generate embeddings and sparse vector
+    response = client.embeddings.create(input=query_text, model=EMBED_MODEL)
+    dense_embedding = response.data[0].embedding
+    bm25 = BM25Encoder()
+    bm25 = bm25.load(path=BM25_ENCODER_PATH)
+
+    sparse_embedding = bm25.encode_queries(query_text)
+    
+    # 2. Hybrid Search (Pinecone)
+    hybrid_alpha: float = 0.3
+    query_params = {
+        "vector": dense_embedding,
+        "top_k": top_k,
+        "sparse_vector": sparse_embedding,
+        "include_metadata": True,
+        "alpha": hybrid_alpha
+    }
+
+    if filter:
+        query_params["filter"] = filter
+    res = index.query(**query_params)
+    matches = res["matches"]
+
+    if rerank:
+        matches = reranker(matches, query_text)
+    return matches
+
+
+def retrieval(query_text, top_k=5)-> tuple[float, str]:
+    matches = search_index(query_text, top_k)
+
+    final_context = ""
+    confidence_score = 0
+    i=0
+    for match in matches:
         final_context += f"Source: {match['metadata'].get('source', 'N/A')}\n"
         final_context += f"{match['metadata'].get('Content', '')}\n---\n"
-        score = match['score']
-        confidence_score+=score
+        score = match["score"]
+        confidence_score += score
+        i+=1
 
-    return confidence_score/(i+1), final_context
+        # print( f"No. #{i}; Score: {score}, Content: {f'{match["metadata"].get("Content", "")}\n---\n'}" )
+
+    return confidence_score / i if i > 0 else 1, final_context
 
 
 def main(args):
-    
-
     # Load documents from the specified directory
     if args.upsert:
         # Download the 'punkt_tab' tokenizer data
@@ -237,8 +325,6 @@ def main(args):
         print(f"Found {len(contents)} documents to upsert.")
         upsert_data(contents)
         print("Upsert completed.")
-
-
 
 if __name__ == "__main__":
     # Parse command line arguments

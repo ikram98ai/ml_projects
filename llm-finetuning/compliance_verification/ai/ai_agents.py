@@ -1,5 +1,5 @@
 from agents import Agent, Runner, ModelSettings
-from ai.rag import query_index
+from ai.rag import retrieval
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 from typing import Literal, List
@@ -49,8 +49,8 @@ async def image_analysis(base64_urls) -> ImageAnalysisOutput:
             "content": "Analyse the given images to extract informations"
         }],
         text_format=ImageAnalysisOutput,
-        temperature=0.0,  
-        top_p=0.1
+        # temperature=0.0,  
+        # top_p=0.1
     )
 
     analysis = design_analysis.output_parsed
@@ -77,11 +77,11 @@ async def compliance_flow(base64_urls: List[str]):
 
     school_score, school_licensing_rules = 0.0, ''
     if analysis.school_mark_detected:
-        school_score, school_licensing_rules = query_index(f'{analysis.school_names}, {analysis.school_analysis}')   
+        school_score, school_licensing_rules = retrieval(f'{analysis.school_names}, {analysis.school_analysis}')   
 
     org_score, org_licensing_rules = 0.0, ''
     if analysis.org_mark_detected:
-        org_score, org_licensing_rules = query_index(f'{analysis.organization_names}, {analysis.org_analysis}')
+        org_score, org_licensing_rules = retrieval(f'{analysis.organization_names}, {analysis.org_analysis}')
 
     licensing_rules = org_licensing_rules + school_licensing_rules
 

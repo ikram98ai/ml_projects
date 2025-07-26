@@ -29,15 +29,16 @@ async def manage_rag(
     q: Optional[str] = None, 
     status: Optional[str] = None,
     page: int = 1,
-    top_k: int = 12
+    docs_per_page: int = 12,
+    top_k: int = 5,
 ):
     matches = []
     total_pages = 1
     if q:
         matches = search_index( q, top_k=top_k)
     else:
-        matches, total_items = get_paginated_vectors(page,per_page=top_k)
-        total_pages = (total_items + top_k - 1) // top_k
+        matches, total_items = get_paginated_vectors(page,per_page=docs_per_page)
+        total_pages = (total_items + docs_per_page - 1) // docs_per_page
      
     return templates.TemplateResponse(
         "manage.html",
@@ -47,7 +48,7 @@ async def manage_rag(
             "matches": matches, 
             "status": status,
             "page": page,
-            "top_k": top_k,
+            "docs_per_page": docs_per_page,
             "total_pages": total_pages
         }
     )
