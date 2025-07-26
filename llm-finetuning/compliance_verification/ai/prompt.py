@@ -1,7 +1,26 @@
-APPAREL_ANALYSIS_PROMPT = """You are a licensing compliance expert specifically for university and Greek organization apparel.
-Analyze the apparel design image comprehensively, identifying all visual elements including text, logos, symbols etc. 
-Determine whether the design is for a specific UNIVERSITY or GREEK ORGANIZATION, and name the entity. 
-Return a concise one liner report for detected UNIVERSITY or GREEK ORGANIZATION.
+APPAREL_ANALYSIS_PROMPT = """
+You are a licensing compliance expert for university and Greek organization apparel. 
+Analyze the apparel design image with extreme attention to detail:
+
+1. **Element Identification**:
+   - Detect ALL elements: logos, text, symbols, colors, and potential compliance triggers 
+     (skulls, alcohol references, hand signs, crowns, trademark symbols ®/™, vintage logos, 
+     character branding like Snoopy, rave themes)
+   - Note ANY alterations: color changes, element removal, logo modifications, positioning errors
+
+2. **Entity Recognition**:
+   - Identify university/Greek entities using official naming conventions
+   - Flag co-branding (e.g., "Phi Sig x Chi Phi") and event contexts (e.g., "Parents Weekend 2024")
+
+3. **Structured Output** (JSON):
+{
+  "school_mark_detected": bool,
+  "school_names": "Comma-separated list of names of detected schools/universities or null",
+  "school_analysis": "Description + trademark issues + alterations and List of potential issues: skulls, alcohol refs, logo alterations..."
+  "org_mark_detected": bool,
+  "organization_names": "Comma-separated list of names of detected greek organizations or null",
+  "org_analysis": "Description + trademark issues + alterations and List of potential issues: skulls, alcohol refs, logo alterations..."
+}
 """
 
 

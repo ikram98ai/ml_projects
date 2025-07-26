@@ -56,11 +56,17 @@ async def image_analysis(base64_urls) -> ImageAnalysisOutput:
 
 
 CONTEXT = """
-Official guidelines from General Rules and Licensing Rules
+**RULES CONTEXT**
 
-Established General Rules: {} 
+Established General Rules:
+<General Rules>
+{}
+</General Rules>
 
-Established Licensing Rules: {} 
+Established Licensing Rules: 
+<Licensing Rules from RAG>
+{} 
+</Licensing Rules from RAG>
 """
 
 async def compliance_flow(base64_urls: List[str]):
