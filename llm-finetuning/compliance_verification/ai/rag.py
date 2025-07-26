@@ -16,7 +16,10 @@ EMBED_MODEL = os.getenv("EMBED_MODEL", "text-embedding-3-small")
 PINECONE_INDEX = os.getenv("PINECONE_INDEX", "apperal-compliance-hybrid-index")
 EMBED_DIM = int(os.getenv("PINECONE_DIM", 1536))
 PINECONE_REGION = os.getenv("PINECONE_REGION", "us-east-1")
-BM25_ENCODER_PATH = 'ai/bm25_encoder.json'
+# Path to the BM25 encoder file
+# Construct the path to the encoder file relative to this script's location
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+BM25_ENCODER_PATH = os.path.join(SCRIPT_DIR, 'bm25_encoder.json')
 
 client = OpenAI()
 pc = Pinecone(api_key=os.getenv("PINECONE_API_KEY"))
