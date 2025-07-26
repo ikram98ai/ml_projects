@@ -10,12 +10,12 @@ load_dotenv()
 client = OpenAI()
 
 class EvaluationOutput(BaseModel):
-    evaluation: list[str] = Field(desc= "Write a one line explaination to compare Ai voilation reason and actual voilation reason.")
+    evaluation: str = Field(desc= "Write a one line explaination to compare Ai voilation reason and actual voilation reason.")
     score: float = Field(desc= "Score the difference as follows:\n0 if the violation reasons don’t match at all,\n0.5 for partial matches, and\n1 for full matches.")
 
 
 def compliance_evaluation(actual_reason:str, actual_compliance_status:str, ai_reason:str, ai_compliance_status:str):
-    print("actual_compliance_status != ai_compliance_status: ",actual_compliance_status != ai_compliance_status, actual_compliance_status, ai_compliance_status)
+
     if actual_compliance_status.lower().strip() != ai_compliance_status.lower().strip():
         return {"evaluation":None, "score": -1 }
     
@@ -37,19 +37,16 @@ def compliance_evaluation(actual_reason:str, actual_compliance_status:str, ai_re
 
 def test_compliance_api(csv_path, output_path, api_url):
     # Read the input CSV
-    df = pd.read_csv(csv_path)
-
-    # Prepare columns if they don't exist
-    for col in ['AI Compliance', 'AI violation', 'Confidence Score', 'Trademark Detected', 
-                'Organization', 'Organization Type', 'AI Evaluation', 'AI Score']:
-        if col not in df.columns:
-            df[col] = None
-
+    df = pd.read_csv(csv_path).head(20)
+    
+    # Create a new DataFrame with the specified output structure
+    output_data = []
+    
     # Iterate over each row and call the API
     for idx, row in df.iterrows():
         image_url = row['Image Link']
-        # if idx > 4: break
-        print(f"Processing row {idx} with image URL: {image_url}")
+        print(f"Processing row {idx}")
+        
         try:
             # Download the image
             img_response = requests.get(image_url)
@@ -62,50 +59,55 @@ def test_compliance_api(csv_path, output_path, api_url):
 
             data = response.json()
 
-            print("AI response: ")
-            pprint(data, indent=4)
-
             # Evaluate the ai response
             output = compliance_evaluation(row['Actual violation'], row['Actual status'], 
                                            data.get('violation_reason'), data.get('compliance_status'))
-            print("Evaluation output: ")
-            pprint(output, indent=4)
 
+            
+            row_data = {
+                'image_url': image_url,
+                'actual_violation': row['Actual violation'], 
+                'violation_reason': data.get('violation_reason'),
+                'actual_status': row['Actual status'],
+                'compliance_status': data.get('compliance_status'),
+                'ai_evaluation': output['evaluation'],
+                'evaluation_score': output['score'],
+                'org_mark_detected': data.get('org_mark_detected'),
+                'organization': data.get('organizations'),
+                'org_confidence_score': data.get('org_score'),
+                'org_analysis': data.get('org_analysis'),
+                'school_mark_detected': data.get('school_mark_detected'),
+                'school': data.get('schools'),
+                'school_confidence_score': data.get('school_score'),
+                'school_analysis': data.get('school_analysis')
+            }
+
+
+            pprint(row_data, sort_dicts=False)
             print("\n\n")
-
-            # Update the dataframe
-            df.at[idx, 'AI Compliance'] = data.get('compliance_status')
-            df.at[idx, 'AI violation'] = data.get('violation_reason')
-            df.at[idx, 'Confidence Score'] = data.get('confidence_score')
-
-            df.at[idx, 'Trademark Detected'] = data.get('trademark_detected')
-            df.at[idx, 'Organization'] = data.get('organization')
-            df.at[idx, 'Organization Type'] = data.get('org_type')
-
-            df.at[idx, 'AI Evaluation'] = output.get("evaluation")
-            df.at[idx, 'AI Score'] = output.get('score')
+            output_data.append(row_data)
 
         except Exception as e:
             print(f"Error processing row {idx} (URL: {image_url}): {e}")
-            df.at[idx, 'AI Compliance'] = 'Error'
-            df.at[idx, 'AI violation'] = str(e)
-            df.at[idx, 'Confidence Score'] = None
 
-            df.at[idx, 'Trademark Detected'] = None
-            df.at[idx, 'Organization'] = None
-            df.at[idx, 'Organization Type'] = None
+        
+        # Add the row data to output list
 
-            df.at[idx, 'AI Evaluation'] = None
-            df.at[idx, 'AI Score'] = None
-
-
-    # Save the updated CSV
-    df.to_csv(output_path, index=False)
+    # Create new DataFrame with the specified structure
+    output_df = pd.DataFrame(output_data)
+    
+    # Save the new DataFrame
+    output_df.to_csv(output_path, index=False)
+    
+    return output_df
 
 if __name__ == '__main__':
     # Example usage
     CSV_PATH = 'test/test.csv'
-    OUTPUT_PATH = 'test_updated.csv'
-    API_URL = 'http://127.0.0.1:8000/compliance-detect'
-    test_compliance_api(CSV_PATH, OUTPUT_PATH, API_URL)
+    OUTPUT_PATH = 'test/test_updated.csv'
+    API_URL = 'http://127.0.0.1:8000/compliance'
+    
+    result_df = test_compliance_api(CSV_PATH, OUTPUT_PATH, API_URL)
     print(f"Updated CSV saved to {OUTPUT_PATH}")
+    print(f"New DataFrame shape: {result_df.shape}")
+    print(f"Columns: {list(result_df.columns)}")

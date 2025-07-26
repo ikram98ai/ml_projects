@@ -16,10 +16,9 @@ EMBED_DIM = int(os.getenv("PINECONE_DIM", 1536))
 PINECONE_REGION = os.getenv("PINECONE_REGION", "us-east-1")
 
 client = OpenAI()
+pc = Pinecone(api_key=os.getenv("PINECONE_API_KEY"))
 
-def get_index():
-    pc = Pinecone(api_key=os.getenv("PINECONE_API_KEY"))
-
+def create_index():
     # Create the index if it doesn't already exist.
     if PINECONE_INDEX not in pc.list_indexes().names():
         print(f"Creating Pinecone index: {PINECONE_INDEX}")
@@ -31,26 +30,8 @@ def get_index():
             metric='dotproduct',
             spec=spec
         )
+        print(f"Successfully Created Pinecone index: {PINECONE_INDEX}")
 
-    # Connect to the index.
-    index = pc.Index(PINECONE_INDEX)
-    # print('Connected to Pinecone index:', PINECONE_INDEX,'\n', index)
-    return index
-
-# def chunk_text(text:str, chunk_size=1000, chunk_overlap=200):
-#     """
-#     Splits a long text into smaller chunks of a specified size with overlap.
-#     """
-#     if len(text) <= chunk_size:
-#         return [text]
-
-#     chunks = []
-#     start = 0
-#     while start < len(text):
-#         end = start + chunk_size
-#         chunks.append(text[start:end])
-#         start += chunk_size - chunk_overlap
-#     return chunks
 
 def get_data_from_dir(data_dir)->list[dict]:
     # Initialize lists to store file information
@@ -65,18 +46,17 @@ def get_data_from_dir(data_dir)->list[dict]:
                 doc = Document(file_path)
                 fname = file.split('.doc')[0]
                 content = "\n".join([para.text for para in doc.paragraphs])
-                
-                # chunks = chunk_text(content)
-                # for chunk in chunks:
+             
                 contents.append({
                     "text": content,
                     "source": f"{parent_dir}, {fname}"
                 })
     return contents
 
-def upsert_data(index, contents: list[dict]) -> str:
+def upsert_data(contents: list[dict]) -> str:
     print(f"Upserting {len(contents)} documents into Pinecone index...")
-    
+    index = pc.Index(PINECONE_INDEX)
+
     try:
         batch_size = 32
         for i in range(0, len(contents), batch_size):
@@ -105,8 +85,10 @@ def upsert_data(index, contents: list[dict]) -> str:
         return f"Error during upsert: {e}"
 
 
-def search_index(index, query_text, top_k=10, filter=None):
+def search_index(query_text, top_k=10, filter=None):
     """Search index and return matches with metadata"""
+    index = pc.Index(PINECONE_INDEX)
+
     response = client.embeddings.create(input=query_text, model=EMBED_MODEL)
     query_embedding = response.data[0].embedding
     
@@ -122,26 +104,32 @@ def search_index(index, query_text, top_k=10, filter=None):
     res = index.query(**query_params)
     return res['matches']
 
-def delete_vectors(index, vector_ids):
+def delete_vectors(vector_ids):
     """Delete vectors by their IDs"""
+    index = pc.Index(PINECONE_INDEX)
+
     index.delete(ids=vector_ids)
 
-def update_vector(index, vector_id, text, source):
+def update_vector(vector_id, text, source):
     """Update a vector with new text and metadata"""
+    index = pc.Index(PINECONE_INDEX)
+
     res = client.embeddings.create(input=[text], model=EMBED_MODEL)
     embedding = res.data[0].embedding
     index.upsert(vectors=[(vector_id, embedding, {"Content": text, "source": source})])
 
-def get_vector(index, vector_id):
+def get_vector(vector_id):
     """Retrieve a vector by its ID"""
+    index = pc.Index(PINECONE_INDEX)
+
     res = index.fetch(ids=[vector_id])
     if not res.vectors:
         return None
     return res.vectors.get(vector_id)
 
 
-def get_paginated_vectors(index, page=1, per_page=12):
-
+def get_paginated_vectors(page=1, per_page=12):
+    index = pc.Index(PINECONE_INDEX)
     # Get index statistics
     stats = index.describe_index_stats()
     total_vectors = stats['total_vector_count']
@@ -169,11 +157,11 @@ def get_paginated_vectors(index, page=1, per_page=12):
     
     return res['matches'], total_vectors
 
-def query_index(index, query_text, top_k=5)-> tuple[float, str]:
-    # Generate an embedding for the query.
+def query_index(query_text, top_k=5)-> tuple[float, str]:
+    index = pc.Index(PINECONE_INDEX)
     print(f"Querying index with: {query_text[:100]}")
-    # index = get_index()
     try:
+        # Generate an embedding for the query.
         response = client.embeddings.create(input=query_text, model=EMBED_MODEL)
         if not response or not response.data or not response.data[0].embedding:
             raise ValueError("Embedding generation returned no data.")
@@ -203,14 +191,15 @@ def query_index(index, query_text, top_k=5)-> tuple[float, str]:
 
 
 def main(args):
-    index = get_index()
+    
 
     # Load documents from the specified directory
     if args.upsert:
+        create_index()
         print("Upsert data into the Pinecone index.")
         contents = get_data_from_dir("ai/data")
         print(f"Found {len(contents)} documents to upsert.")
-        upsert_data(index, contents)
+        upsert_data(contents)
         print("Upsert completed.")
 
 

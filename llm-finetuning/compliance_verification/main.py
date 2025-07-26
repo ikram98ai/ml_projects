@@ -5,7 +5,7 @@ from fastapi.templating import Jinja2Templates
 from mangum import Mangum
 from typing import List, Optional
 from ai.ai_agents import trademark_agent_runner, compliance_flow
-from ai.rag import get_index, upsert_data, search_index, delete_vectors, get_paginated_vectors, get_vector, update_vector
+from ai.rag import upsert_data, search_index, delete_vectors, get_paginated_vectors, get_vector, update_vector
 from utils import get_base64_urls, get_docx_contents
 import traceback
 
@@ -31,13 +31,12 @@ async def manage_rag(
     page: int = 1,
     top_k: int = 12
 ):
-    index = get_index()
     matches = []
     total_pages = 1
     if q:
-        matches = search_index(index, q, top_k=top_k)
+        matches = search_index( q, top_k=top_k)
     else:
-        matches, total_items = get_paginated_vectors(index,page,per_page=top_k)
+        matches, total_items = get_paginated_vectors(page,per_page=top_k)
         total_pages = (total_items + top_k - 1) // top_k
      
     return templates.TemplateResponse(
@@ -55,14 +54,12 @@ async def manage_rag(
 
 @app.get("/manage/delete/{vector_id}")
 async def delete_document(vector_id: str):
-    index = get_index()
-    delete_vectors(index, [vector_id])
+    delete_vectors([vector_id])
     return RedirectResponse(url="/manage?status=deleted")
 
 @app.get("/manage/edit/{vector_id}", response_class=HTMLResponse)
 async def edit_document_form(request: Request, vector_id: str):
-    index = get_index()
-    vector = get_vector(index, vector_id)
+    vector = get_vector(vector_id)
     if not vector:
         raise HTTPException(404, "Vector not found")
     metadata = vector['metadata']
@@ -82,8 +79,7 @@ async def update_document(
     text: str = Form(...),
     source: str = Form(...)
 ):
-    index = get_index()
-    update_vector(index, vector_id, text, source)
+    update_vector(vector_id, text, source)
     return RedirectResponse(url="/manage?status=updated", status_code=303)
 
 @app.get("/manage/add", response_class=HTMLResponse)
@@ -96,7 +92,6 @@ async def add_new_document(
     text: Optional[str] = Form(None),
     files: Optional[List[UploadFile]] = File(None)
 ):
-    index = get_index()
     contents = []
     
     if files:
@@ -115,31 +110,15 @@ async def add_new_document(
         raise HTTPException(400, "Either text or DOCX file must be provided")
     
     if contents:
-        upsert_data(index, contents)
+        upsert_data(contents)
     
     return RedirectResponse(url="/manage?status=added", status_code=303)
 
 
 
-@app.post("/compliance-trademark-detection")
-async def compliance_and_trademark_verification(images: List[UploadFile] = File(..., description="Upload one or two image files for compliance verification.")):
-    try:
-        base64_urls = await get_base64_urls(images[:2])
-        compliance_output = await compliance_flow(base64_urls)
-        detection_output = await trademark_agent_runner(base64_urls)
-        output = compliance_output | detection_output
-    except HTTPException as e:
-        traceback.print_exc()
-        raise e
-    except Exception as e:
-        print(f"Error during compliance verification: {e}")
-        traceback.print_exc()
-        raise HTTPException(500,str(e))
-    return output
-
 
 @app.post("/compliance")
-async def compliance_verification_flow(images: List[UploadFile] = File(..., description="Upload one or two image files for compliance verification.")):
+async def compliance_verification(images: List[UploadFile] = File(..., description="Upload one or two image files for compliance verification.")):
     try:
         base64_urls = await get_base64_urls(images[:2])
         # output = await compliance_agent_runner(base64_urls)

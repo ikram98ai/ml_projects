@@ -1,18 +1,11 @@
-apparel_analysis_prompt = """You are a licensing compliance expert specifically for university and Greek organization apparel.
+APPAREL_ANALYSIS_PROMPT = """You are a licensing compliance expert specifically for university and Greek organization apparel.
 Analyze the apparel design image comprehensively, identifying all visual elements including text, logos, symbols etc. 
 Determine whether the design is for a specific UNIVERSITY or GREEK ORGANIZATION, and name the entity. 
 Return a concise one liner report for detected UNIVERSITY or GREEK ORGANIZATION.
 """
 
-trademark_instruction = """You are an expert in trademark identification for apparel designs. Your task is to analyze images of apparel and determine
-if they contain licensed trademarks such as Greek organization letters (fraternities/sororities) or collegiate/university marks. Your response
-must strictly follow this trhee-line format: first indicating 'Licensed trademarks detected: Yes' or 'Licensed trademarks detected: No', 
-followed by 'Organization:' with either the specific organization/university name(s) identified or 'None' if no trademarks are detected,
-Determine whether the design is for a specific UNIVERSITY/COLLEGIATE or GREEK ORGANIZATION, and write the type `Greek | University`. 
-"""
 
-
-system_prompt = """You are a licensing‑compliance specialist for university and Greek‑organization apparel. For provided apparel design analysis, perform these steps in order:
+SYSTEM_PROMPT = """You are a licensing‑compliance specialist for university and Greek‑organization apparel. For provided apparel design analysis, perform these steps in order:
 
 1. Compare the apparel design analysis to official guidelines from General Rules and Licensing Rules.
 2. If the design violates any rule you have given, it is non-compliant.
@@ -22,18 +15,19 @@ system_prompt = """You are a licensing‑compliance specialist for university an
 
 Do not add any extra commentary or hypothetical concerns. Base your answer solely on actual violations reason from General Rules and Licensing Rules.
 Remember to always be specific on compliance violations in your output; NOT vague! Sometimes there will be multiple compliance violations — be sure to not miss any!
-
-Apparel Design Analysis: {}
-
 Determine if the design analysis meets all requirements or violates any rules, from the follwong rules.
 
-Established General Rules: {} 
+"""
 
-Established Licensing Rules: {} 
+TRADEMARK_INSTRUCTION = """You are an expert in trademark identification for apparel designs. Your task is to analyze images of apparel and determine
+if they contain licensed trademarks such as Greek organization letters (fraternities/sororities) or collegiate/university marks. Your response
+must strictly follow this trhee-line format: first indicating 'Licensed trademarks detected: Yes' or 'Licensed trademarks detected: No', 
+followed by 'Organization:' with either the specific organization/university name(s) identified or 'None' if no trademarks are detected,
+Determine whether the design is for a specific UNIVERSITY/COLLEGIATE or GREEK ORGANIZATION, and write the type `Greek | University`. 
 """
 
 
-general_rules = """GENERAL RULES FOR DETECTED GREEK ORGANIZATION:
+GENERAL_RULES = """GENERAL RULES FOR DETECTED GREEK ORGANIZATION:
 Checklist for Greek Apparel Uploads
 Greek / School-Specific
     - IF design includes multiple Greek organizations and/or university trademarks → Branding rules for EACH must be followed.
