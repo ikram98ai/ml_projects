@@ -6,6 +6,9 @@ COPY requirements.txt ${LAMBDA_TASK_ROOT}
 # Install the specified packages
 RUN pip install -r requirements.txt
 
+# Download nltk data
+RUN python -m nltk.downloader punkt_tab
+
 # Copy function code
 COPY . ${LAMBDA_TASK_ROOT}
 
