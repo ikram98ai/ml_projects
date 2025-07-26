@@ -114,8 +114,8 @@ async def compliance_flow(base64_urls: List[str]):
         "school": analysis.school_names,
         "org_confidence_score": int(org_score * 100),
         "school_confidence_score": int(school_score * 100),
-        "school_analysis": analysis.school_analysis, # only for testing
-        "org_analysis": analysis.org_analysis, # only for testing
+        # "school_analysis": analysis.school_analysis, # only for testing
+        # "org_analysis": analysis.org_analysis, # only for testing
     }
     return  output
 
