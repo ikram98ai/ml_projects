@@ -6,8 +6,12 @@ COPY requirements.txt ${LAMBDA_TASK_ROOT}
 # Install the specified packages
 RUN pip install -r requirements.txt
 
-# Download nltk data
-RUN python -m nltk.downloader punkt_tab
+# Create a directory for NLTK data and set permissions
+RUN mkdir -p /usr/share/nltk_data
+# Download NLTK data to the created directory
+RUN python -m nltk.downloader -d /usr/share/nltk_data punkt_tab
+# Set the NLTK_DATA environment variable
+ENV NLTK_DATA=/usr/share/nltk_data
 
 # Copy function code
 COPY . ${LAMBDA_TASK_ROOT}
