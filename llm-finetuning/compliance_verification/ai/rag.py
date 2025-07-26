@@ -4,34 +4,37 @@ from openai import OpenAI
 from pinecone import Pinecone
 from pinecone import ServerlessSpec
 from dotenv import load_dotenv
-import argparse
+from pinecone_text.sparse import BM25Encoder
+from tqdm import trange
+import argparse, nltk
 
 load_dotenv()
 
 
 # Initialize clients
 EMBED_MODEL = os.getenv("EMBED_MODEL", "text-embedding-3-small")
-PINECONE_INDEX = os.getenv("PINECONE_INDEX", "apperal-compliance-openai-index")
+PINECONE_INDEX = os.getenv("PINECONE_INDEX", "apperal-compliance-hybrid-index")
 EMBED_DIM = int(os.getenv("PINECONE_DIM", 1536))
 PINECONE_REGION = os.getenv("PINECONE_REGION", "us-east-1")
+BM25_ENCODER_PATH = 'ai/bm25_encoder.json'
 
 client = OpenAI()
 pc = Pinecone(api_key=os.getenv("PINECONE_API_KEY"))
 
 def create_index():
     # Create the index if it doesn't already exist.
-    if PINECONE_INDEX not in pc.list_indexes().names():
+    if not pc.has_index(PINECONE_INDEX):
         print(f"Creating Pinecone index: {PINECONE_INDEX}")
         # Define the Pinecone serverless specification.
         spec = ServerlessSpec(cloud="aws", region=PINECONE_REGION)
         pc.create_index(
             PINECONE_INDEX,
+            vector_type="dense",
+            metric="dotproduct",
             dimension=EMBED_DIM,
-            metric='dotproduct',
             spec=spec
         )
         print(f"Successfully Created Pinecone index: {PINECONE_INDEX}")
-
 
 def get_data_from_dir(data_dir)->list[dict]:
     # Initialize lists to store file information
@@ -53,13 +56,28 @@ def get_data_from_dir(data_dir)->list[dict]:
                 })
     return contents
 
+def fit_bm25(contents: list[dict]):
+    # 1. Fit BM25 on the entire dataset
+    print("Fitting BM25 encoder on the entire dataset...")
+    all_texts = [item["text"] for item in contents]
+    bm25 = BM25Encoder()
+    bm25.fit(all_texts)
+
+    # 2. Dump the fitted encoder
+    os.makedirs(os.path.dirname(BM25_ENCODER_PATH), exist_ok=True)
+    bm25.dump(BM25_ENCODER_PATH)
+    print(f"BM25 encoder saved to {BM25_ENCODER_PATH}")
+    return bm25
+
 def upsert_data(contents: list[dict]) -> str:
-    print(f"Upserting {len(contents)} documents into Pinecone index...")
     index = pc.Index(PINECONE_INDEX)
 
+    bm25 = fit_bm25(contents)
+ 
     try:
         batch_size = 32
-        for i in range(0, len(contents), batch_size):
+        print(f"Upserting {len(contents)} documents with batch_size {batch_size} into Pinecone index...")
+        for i in trange(0, len(contents), batch_size):
             i_end = min(i + batch_size, len(contents))
             batch = contents[i:i_end]
             
@@ -70,14 +88,26 @@ def upsert_data(contents: list[dict]) -> str:
             res = client.embeddings.create(input=lines_batch, model=EMBED_MODEL)
             embeds = [record.embedding for record in res.data]
             
+            # Encode documents with the pre-fitted BM25 model
+            sparse_embeds = bm25.encode_documents(lines_batch)
+
             # Prepare metadata.
             meta = []
             for item in batch:
                 meta.append({"Content": item['text'], "source": item['source']})
             
-            # Upsert the batch into Pinecone.
-            vectors = list(zip(ids_batch, embeds, meta))
+
+             # Upsert the batch into Pinecone.
+            vectors = []
+            for _id, dense, sparse, metadata in zip(ids_batch, embeds, sparse_embeds, meta):
+                vectors.append( {
+                        "id": _id,
+                        "values": dense,
+                        "sparse_values": sparse,
+                        "metadata": metadata,
+                    } )
             res = index.upsert(vectors=vectors)
+
         print("Upsert completed successfully.")
         return f"Upsert of {len(contents)} documents completed successfully."
     except Exception as e:
@@ -195,6 +225,12 @@ def main(args):
 
     # Load documents from the specified directory
     if args.upsert:
+        # Download the 'punkt_tab' tokenizer data
+        try:
+            nltk.data.find('tokenizers/punkt_tab')
+        except LookupError:
+            nltk.download('punkt_tab')
+
         create_index()
         print("Upsert data into the Pinecone index.")
         contents = get_data_from_dir("ai/data")
