@@ -74,11 +74,11 @@ def test_compliance_api(csv_path, output_path, api_url):
                 'evaluation_score': output['score'],
                 'org_mark_detected': data.get('org_mark_detected'),
                 'organization': data.get('organization'),
-                'org_confidence_score': data.get('org_score'),
+                'org_confidence_score': data.get('org_confidence_score'),
                 'org_analysis': data.get('org_analysis'),
                 'school_mark_detected': data.get('school_mark_detected'),
                 'school': data.get('school'),
-                'school_confidence_score': data.get('school_score'),
+                'school_confidence_score': data.get('school_confidence_score'),
                 'school_analysis': data.get('school_analysis')
             }
 

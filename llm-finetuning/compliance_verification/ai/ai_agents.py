@@ -48,7 +48,9 @@ async def image_analysis(base64_urls) -> ImageAnalysisOutput:
             "role": "user",
             "content": "Analyse the given images to extract informations"
         }],
-        text_format=ImageAnalysisOutput
+        text_format=ImageAnalysisOutput,
+        temperature=0.0,  
+        top_p=0.1
     )
 
     analysis = design_analysis.output_parsed
@@ -110,10 +112,10 @@ async def compliance_flow(base64_urls: List[str]):
         "org_mark_detected": analysis.org_mark_detected,
         "organization": analysis.organization_names,
         "school": analysis.school_names,
-        "school_analysis": analysis.school_analysis,
-        "org_analysis": analysis.org_analysis,
-        "org_confidence_score": org_score,
-        "school_confidence_score": school_score,
+        "org_confidence_score": int(org_score * 100),
+        "school_confidence_score": int(school_score * 100),
+        "school_analysis": analysis.school_analysis, # only for testing
+        "org_analysis": analysis.org_analysis, # only for testing
     }
     return  output
 
