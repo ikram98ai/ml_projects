@@ -7,6 +7,8 @@ from dotenv import load_dotenv
 from pinecone_text.sparse import BM25Encoder
 from tqdm import trange
 import argparse, nltk
+from pydantic import BaseModel
+from typing import List
 
 load_dotenv()
 
@@ -171,23 +173,16 @@ def get_paginated_vectors(page=1, per_page=12):
         return []
     
     top_k = min(per_page, remaining, 10000)
-    
+    ids = [str(i) for i in range(offset, offset + top_k)]
     # Create a dummy query vector
-    dummy_vector = [0.0] * EMBED_DIM
-    
-    # Query with stable ordering using namespace and pagination
-    res = index.query(
-        vector=dummy_vector,
-        top_k=top_k,
-        offset=offset,
-        include_metadata=True,
-        include_values=False
-    )
-    
-    return res['matches'], total_vectors
+    res = index.fetch(ids=ids)
 
-from pydantic import BaseModel
-from typing import List
+    matches = [{**vec.metadata,"score":0,'id': int(vec.id)} for vec in res.vectors.values()]
+    
+    matches = sorted(matches, key=lambda x: x.get("id", 0), reverse=False)
+
+    return matches, total_vectors
+
 
 class RerankId(BaseModel):
     relevant_ids: List[int]
@@ -292,6 +287,8 @@ def search_index(query_text, top_k=5, rerank=True, filter=None) -> list[dict]:
 
     if rerank:
         matches = reranker(matches, query_text)
+        
+    matches = [{**m.metadata,"score":m.score,'id':m.id} for m in matches]
     return matches
 
 
@@ -302,8 +299,8 @@ def retrieval(query_text, top_k=5)-> tuple[float, str]:
     confidence_score = 0
     i=0
     for match in matches:
-        final_context += f"Source: {match['metadata'].get('source', 'N/A')}\n"
-        final_context += f"{match['metadata'].get('Content', '')}\n---\n"
+        final_context += f"Source: {match.get('source', 'N/A')}\n"
+        final_context += f"{match.get('Content', '')}\n---\n"
         score = match["score"]
         confidence_score += score
         i+=1

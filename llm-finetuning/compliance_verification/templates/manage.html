@@ -33,7 +33,7 @@
                     Score: {{ match.score | round(2) }}
                 </span>
                 <div class="flex gap-2">
-                    <button onclick='openModal({{ match.metadata.source | tojson }}, {{ match.metadata.Content | tojson }})' class="text-gray-500 hover:text-indigo-600 transition duration-200 ease-in-out" title="View Document">
+                    <button onclick='openModal({{ match.source | tojson }}, {{ match.Content | tojson }})' class="text-gray-500 hover:text-indigo-600 transition duration-200 ease-in-out" title="View Document">
                         <i class="fas fa-eye"></i>
                     </button>
                     <a href="/manage/edit/{{ match.id }}" class="text-gray-500 hover:text-indigo-600 transition duration-200 ease-in-out" title="Edit Document">
@@ -49,11 +49,11 @@
             
             <h3 class="font-bold text-gray-900 mb-2 truncate text-lg">
                 <i class="fas fa-file-alt text-indigo-500 mr-2"></i>
-                {{ match.metadata.source }}
+                {{ match.source }}
             </h3>
             
             <p class="text-gray-600 text-sm mb-4 line-clamp-3">
-                {{ match.metadata.Content }}
+                {{ match.Content }}
             </p>
             
             <div class="text-xs text-gray-500 flex items-center">
