@@ -47,11 +47,9 @@ Determine whether the design is for a specific UNIVERSITY/COLLEGIATE or GREEK OR
 
 
 GENERAL_RULES = """GENERAL RULES FOR DETECTED GREEK ORGANIZATION:
-Checklist for Greek Apparel Uploads
 Greek / School-Specific
-    - IF design includes multiple Greek organizations and/or university trademarks → Branding rules for EACH must be followed.
-    - IF Greek organization letters are written in lowercase → NOT approved. Use ONLY either ALL CAPS or First Letter Uppercase. NOTE: this greek letter capitalisation rule ONLY applies to the ENGLISH alphabet; this means designs WITH greek letter lowercase IS permitted. 
-    - IF founding year (other than the national founding year) is included without chapter name → NOT approved. The CURRENT year (2025) such as for an upcoming event IS permitted. There are only two types of years allowed: the founding year (before 2025) or the current year (2025). 
+    - IF design includes multiple Greek organizations’ and/or university trademarks → Branding rules for EACH must be followed. Go through the individual articles to check for compliance.
+    -  ALWAYS Use the founding year for every organisation unless referring to the current, previous, or upcoming calendar years
 
 Alcohol & Partying
     - IF design includes drinking games references (e.g., Take a shot, Chug, Beer pong, Kings Cup, Never have I ever, Power hour, Spin the bottle, OR similar) → NOT approved.
@@ -71,9 +69,6 @@ Drugs, Cigarettes & Paraphernalia
 Violence
     - IF design includes violent imagery or phrases (e.g., throw hands, pull up, hit list, bang bang, knockout, smoke someone, gang up, OR similar) → NOT approved.
     - IF design promotes harm or aggression → NOT approved.
-
-Gambling
-    - IF design includes gambling references (e.g., poker chips, playing cards, Casino logos, Blackjack, Slot Machines, Roulette, Las Vegas, OR similar) → NOT approved.
 
 Profanity
     - IF design includes vulgar, explicit, or profane language (e.g., fuck, shit, bitch, asshole, dick, cunt, OR similar) → NOT approved.
@@ -98,14 +93,11 @@ Pop Culture & Brand References
     - IF design references Patagonia, Santa Cruz, Dylan’s Candy Bar, Olympics, Adidas, Animal House, Playboy → NOT approved.
     - IF design includes OVO or Life is Good → NOT approved under ANY circumstance (NEVER approved).
 
-    
 GENERAL RULES FOR DETECTED UNIVERSITY:
-CHECKLIST FOR COLLEGIATE UPLOADS
-
 School-Specific
-    - IF design includes multiple university trademarks → YOU MUST follow branding rules for EACH ONE.
+    - IF design includes multiple Greek organizations and/or university trademarks → Branding rules for EACH must be followed. Go through the individual articles to check for compliance.
     - IF verbiage or logos are used → MUST be used with ® and ™ symbols
-    - IF design does not include the student group name  → this is considered a retail design and is NOT APPROVED. We hold an internal license, so designs MUST be clearly differentiated.
+    - IF design does not include the student group name alongside university trademarks  → this is considered a retail design and is NOT APPROVED. 
 
 Alcohol & Partying
     - IF design includes drinking games references (e.g., Take a shot, Chug, Beer pong, King’s Cup, Drunk Jenga, Power hour, Circle of Death, Spin the bottle, OR similar) → NOT approved.
@@ -154,6 +146,6 @@ Name, Image, and Likeness (NIL)
 
 NCAA-Related References
     - IF design references NCAA or its conferences → NOT approved.
-    - Prohibited terms include (but are not limited to):
-        National Collegiate Athletic Association, PAC12, SEC, Big10, MAC, Champions, National Champs, Division I, Division II, Bowl names, Championship names, NCAA stadiums, trophies/cups
+        - Prohibited terms include (but are not limited to):
+          National Collegiate Athletic Association, PAC12, SEC, Big10, MAC, Champions, National Champs, Division I, Division II, Bowl names, Championship names, NCAA stadiums, trophies/cups
 """

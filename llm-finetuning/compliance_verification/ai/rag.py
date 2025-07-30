@@ -15,7 +15,7 @@ load_dotenv()
 
 # Initialize clients
 EMBED_MODEL = os.getenv("EMBED_MODEL", "text-embedding-3-small")
-PINECONE_INDEX = os.getenv("PINECONE_INDEX", "apperal-compliance-hybrid-index")
+PINECONE_INDEX = os.getenv("PINECONE_INDEX", "apperal-compliance-hybrid")
 EMBED_DIM = int(os.getenv("PINECONE_DIM", 1536))
 PINECONE_REGION = os.getenv("PINECONE_REGION", "us-east-1")
 # Path to the BM25 encoder file
