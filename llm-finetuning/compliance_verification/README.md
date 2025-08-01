@@ -9,13 +9,22 @@ apperals_verification/
 ├── ai/
 │   ├── data/
 │   ├── ai_agents.py
+│   ├── bm25_encoder.json
+│   ├── prompts.py
 │   └── rag.py
+├── templates/
+│   ├── add.html
+│   ├── base.html
+│   ├── edit.html
+│   └── maange.html
 ├── terraform/
 │   ├── main.tf
 │   ├── backend.tf
 │   ├── var.tf
 │   ├── outputs.tf
 │   └── terraform.tfvars
+├── test/
+│   └── test..py
 ├── .dockerignore
 ├── .env
 ├── .gitignore
@@ -26,6 +35,30 @@ apperals_verification/
 ├── README.md
 └── requirements.txt
 ```
+
+
+## Local Development
+
+### Running Locally
+```bash
+# Install dependencies
+make install
+
+# Set environment variable
+export OPENAI_API_KEY=your_key_here
+export PINECONE_API_KEY=your_key_here
+
+# Run the application
+make dev
+```
+
+### Initial Data Upsert
+To upsert initial RAG (Retrieval Augmented Generation) data to the Pinecone database, use the following command:
+```bash
+make upsert_rag
+```
+This command runs the `ai/rag.py` script with the `--upsert` flag, which is responsible for populating the vector database with necessary information for the AI models.
+
 
 ## Deployment
 
@@ -134,31 +167,40 @@ make destroy
 
 The application exposes the following API endpoints:
 
-### `POST /compliance_flow`
+### `POST /compliance`
 
-*   **Description**: Performs compliance verification on uploaded apparel design images using a direct flow. This endpoint integrates image analysis, rule retrieval, and compliance evaluation to determine if a design adheres to general and licensing rules.
+*   **Description**: Performs a multi-step compliance verification on uploaded apparel design images. The process is as follows:
+    1.  **Image Analysis**: The image is first analyzed by an AI model to detect specific elements, extracting the following information:
+        - `school_mark_detected`: (boolean) Whether a school mark is detected.
+        - `school_names`: (string | None) The names of any detected schools.
+        - `school_analysis`: (string | None) A description of the school-related elements.
+        - `org_mark_detected`: (boolean) Whether an organization mark is detected.
+        - `organization_names`: (string | None) The names of any detected organizations.
+        - `org_analysis`: (string | None) A description of the organization-related elements.
+    2.  **Rule Retrieval**: If a school or organization is detected, the system retrieves relevant compliance rules and scores from a vector database.
+    3.  **Compliance Evaluation**: The retrieved rules are combined with a set of general rules. A final AI model then evaluates the initial image analysis against this comprehensive set of rules to determine the final compliance status.
 *   **Input**: `images` (List[UploadFile]) - A list of up to two image files (PNG, JPG, JPEG) for analysis.
-*   **Output**: A JSON object containing the `compliance_status` (e.g., "Compliant", "Non-compliant") and `violation_reason` (a brief explanation if non-compliant).
+*   **Output**: A detailed JSON object containing the compliance status, reasons for violation, and information about detected school or organization marks, including confidence scores.
+*   **Example Output**
+    ```json
+    {
+        "compliance_status": "Non-compliant",
+        "violation_reason": "The design contains the school name 'SAINIK SCHOOL' which is explicitly listed as a prohibited element in the organization's guidelines.",
+        "school_mark_detected": true,
+        "org_mark_detected": false,
+        "organization": null,
+        "school": "SAINIK SCHOOL",
+        "org_confidence_score": 0,
+        "school_confidence_score": 95
+    }
+    ```
 *   **Example Usage**:
     ```bash
-    curl -X POST "http://localhost:8000/compliance_flow" \
+    curl -X POST "http://localhost:8000/compliance" \
       -H "accept: application/json" \
       -H "Content-Type: multipart/form-data" \
       -F "images=@./path/to/your/image1.png" \
       -F "images=@./path/to/your/image2.jpeg"
-    ```
-
-### `POST /compliance_agent`
-
-*   **Description**: Performs compliance verification using an AI agent-based approach. This endpoint leverages a more sophisticated agentic workflow for compliance checking, allowing for more dynamic rule application and reasoning.
-*   **Input**: `images` (List[UploadFile]) - A list of up to two image files (PNG, JPG, JPEG) for analysis.
-*   **Output**: A JSON object containing the `compliance_status` and `violation_reason`.
-*   **Example Usage**:
-    ```bash
-    curl -X POST "http://localhost:8000/compliance_agent" \
-      -H "accept: application/json" \
-      -H "Content-Type: multipart/form-data" \
-      -F "images=@./path/to/your/image1.png"
     ```
 
 ### `POST /trademark`
@@ -173,45 +215,6 @@ The application exposes the following API endpoints:
       -H "Content-Type: multipart/form-data" \
       -F "images=@./path/to/your/image.png"
     ```
-
-### `POST /upsert`
-
-*   **Description**: Upserts (updates or inserts) new licensing rules or documents into the Pinecone vector database. This allows for dynamic updating of the knowledge base used by the compliance agents.
-*   **Input**: `docs` (List[UploadFile]) - A list of `.docx` files containing the rules to be upserted.
-*   **Output**: A JSON object confirming the success of the upsert operation.
-*   **Example Usage**:
-    ```bash
-    curl -X POST "http://localhost:8000/upsert" \
-      -H "accept: application/json" \
-      -H "Content-Type: multipart/form-data" \
-      -F "docs=@./path/to/your/rules.docx"
-    ```
-
-## Local Development
-
-### Running Locally
-```bash
-# Install dependencies
-make install
-
-# Set environment variable
-export OPENAI_API_KEY=your_key_here
-
-# Run the application
-make dev
-```
-
-### Initial Data Upsert
-To upsert initial RAG (Retrieval Augmented Generation) data to the Pinecone database, use the following command:
-```bash
-make upsert_rag
-```
-This command runs the `ai/rag.py` script with the `--upsert` flag, which is responsible for populating the vector database with necessary information for the AI models.
-
-### Docker Testing
-```bash
-make docker
-```
 
 ## Monitoring and Troubleshooting
 
