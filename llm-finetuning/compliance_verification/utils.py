@@ -1,7 +1,7 @@
 from fastapi import UploadFile, HTTPException
 from typing import List
 import base64, io
-from docx import Document
+from markitdown import MarkItDown
 
 
 
@@ -24,23 +24,20 @@ async def get_base64_urls(images: List[UploadFile] ) -> str:
 
 
 
-async def get_docx_contents(docs: List[UploadFile]) -> List[str]:
-    contents = []
+async def get_docx_contents(doc: UploadFile) -> str:
+    md = MarkItDown()
     # If UploadFile instances are provided, read their contents
-    for file in docs:
-        if file.content_type != "application/vnd.openxmlformats-officedocument.wordprocessingml.document" and not file.filename.endswith(".docx"):
-            print(f"File type must be document(.docx), current file type is {file.content_type}")
-            raise HTTPException(403, f"File type must be document(.docx), current file type is {file.content_type}")
-        try:
-            print(f"Processing file: {file.filename}")
-            file_bytes = await file.read()
-            buffer = io.BytesIO(file_bytes)
-            doc = Document(buffer)
-            content = "\n".join([para.text for para in doc.paragraphs])
-            fname = file.filename.split('.doc')[0]
-            contents.append(fname+", "+content)  
+    if doc.content_type != "application/vnd.openxmlformats-officedocument.wordprocessingml.document" and not doc.filename.endswith(".docx"):
+        print(f"File type must be document(.docx), current file type is {doc.content_type}")
+        raise HTTPException(403, f"File type must be document(.docx), current file type is {doc.content_type}")
+    try:
+        print(f"Processing file: {doc.filename}")
+        file_bytes = await doc.read()
+        buffer = io.BytesIO(file_bytes)
+        result = md.convert(buffer)
+        fname = doc.filename.split('.doc')[0]
+        return fname+", "+ result.text_content
 
-        except Exception as e:
-            print(f"Error processing file {file.filename}: {e}")
-            raise HTTPException(400, f"Error processing file {file.filename}: {str(e)}")
-    return contents
+    except Exception as e:
+        print(f"Error processing file {doc.filename}: {e}")
+        raise HTTPException(400, f"Error processing file {doc.filename}: {str(e)}")

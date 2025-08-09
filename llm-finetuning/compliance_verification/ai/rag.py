@@ -73,8 +73,10 @@ def fit_bm25(contents: list[dict]):
     print(f"BM25 encoder saved to {BM25_ENCODER_PATH}")
     return bm25
 
-def upsert_data(contents: list[dict]) -> str:
+def upsert_data(contents: list[dict], is_new=False) -> str:
     index = pc.Index(PINECONE_INDEX)
+
+    # Get the total number of vectors in the index
 
     bm25 = fit_bm25(contents)
  
@@ -86,7 +88,13 @@ def upsert_data(contents: list[dict]) -> str:
             batch = contents[i:i_end]
             
             lines_batch = [item['text'] for item in batch]
-            ids_batch = [str(n) for n in range(i, i_end)]
+            
+            if is_new:
+                stats = index.describe_index_stats()
+                total_vectors = stats['total_vector_count']
+                ids_batch = [str(n) for n in range(total_vectors + i, total_vectors + i_end)]
+            else:
+                ids_batch = [str(n) for n in range(i, i_end)]
             
             # Create embeddings for the current batch.
             res = client.embeddings.create(input=lines_batch, model=EMBED_MODEL)

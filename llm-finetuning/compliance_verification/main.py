@@ -91,17 +91,16 @@ async def add_document_form(request: Request):
 async def add_new_document(
     source: str = Form(...),
     text: Optional[str] = Form(None),
-    files: Optional[List[UploadFile]] = File(None)
+    file: Optional[UploadFile] = File(None)
 ):
     contents = []
     
-    if files:
-        doc_contents = await get_docx_contents([files])
-        for doc_content in doc_contents:
-            contents.append({
-                "text": doc_content,
-                "source": source
-            })
+    if file:
+        doc_content = await get_docx_contents(file)
+        contents.append({
+            "text": doc_content,
+            "source": source
+        })
     elif text:
         contents.append({
             "text": text,
@@ -111,7 +110,7 @@ async def add_new_document(
         raise HTTPException(400, "Either text or DOCX file must be provided")
     
     if contents:
-        upsert_data(contents)
+        upsert_data(contents, is_new=True)
     
     return RedirectResponse(url="/manage?status=added", status_code=303)
 
