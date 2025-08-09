@@ -1,5 +1,5 @@
 import os
-from docx import Document
+from markitdown import MarkItDown
 from openai import OpenAI
 from pinecone import Pinecone
 from pinecone import ServerlessSpec
@@ -44,6 +44,7 @@ def create_index():
 def get_data_from_dir(data_dir)->list[dict]:
     # Initialize lists to store file information
     contents: list[dict] = []
+    md = MarkItDown()
     # Walk through the directory and process each .docx file
     for root, dirs, files in os.walk(data_dir):
         for file in files:
@@ -51,14 +52,12 @@ def get_data_from_dir(data_dir)->list[dict]:
                 file_path = os.path.join(root, file)
                 parent_dir = os.path.basename(root)
                 # Read the .docx file
-                doc = Document(file_path)
                 fname = file.split('.doc')[0]
-                content = "\n".join([para.text for para in doc.paragraphs])
-             
+                result = md.convert(file_path)
                 contents.append({
-                    "text": content,
+                    "text": result.text_content,
                     "source": f"{parent_dir}, {fname}"
-                })
+                })    
     return contents
 
 def fit_bm25(contents: list[dict]):
