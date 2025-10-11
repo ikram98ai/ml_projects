@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field
 from typing import Literal, List
 from openai import AsyncOpenAI
 from ai.prompt import TRADEMARK_INSTRUCTION, APPAREL_ANALYSIS_PROMPT, SYSTEM_PROMPT, GENERAL_RULES
+import asyncio
 load_dotenv()
 
 client = AsyncOpenAI()
@@ -21,11 +22,6 @@ def get_content_list(base64_urls: List[str]):
     return content_list
 
 #############################################################Compliance Verification Agent#############################################################
-
-class ComplianceOutput(BaseModel):
-    compliance_status: Literal["Compliant", "Non-compliant"]
-    violation_reason: str | None
-
 
 class ImageAnalysisOutput(BaseModel):
     school_mark_detected: bool
@@ -71,33 +67,49 @@ Established Licensing Rules:
 </Licensing Rules from RAG>
 """
 
+class ComplianceOutput(BaseModel):
+    compliance_status: Literal["Compliant", "Non-compliant"]
+    violation_reason: str | None
+
 async def compliance_flow(base64_urls: List[str]):
     
     analysis = await image_analysis(base64_urls)
 
-    school_score, school_licensing_rules = 0.0, ''
+    tasks = []
     if analysis.school_mark_detected:
-        school_score, school_licensing_rules = retrieval(f'{analysis.school_names}, {analysis.school_analysis}')   
-
-    org_score, org_licensing_rules = 0.0, ''
+        tasks.append(asyncio.to_thread(retrieval, f'{analysis.school_names}, {analysis.school_analysis}'))
     if analysis.org_mark_detected:
-        org_score, org_licensing_rules = retrieval(f'{analysis.organization_names}, {analysis.org_analysis}')
+        tasks.append(asyncio.to_thread(retrieval, f'{analysis.organization_names}, {analysis.org_analysis}'))
+
+    results = await asyncio.gather(*tasks)
+
+    school_score, school_licensing_rules = 0.0, ''
+    org_score, org_licensing_rules = 0.0, ''
+
+    result_index = 0
+    if analysis.school_mark_detected:
+        school_score, school_licensing_rules = results[result_index]
+        result_index += 1
+    if analysis.org_mark_detected:
+        org_score, org_licensing_rules = results[result_index]
+
 
     licensing_rules = org_licensing_rules + school_licensing_rules
 
     response = await client.responses.parse(
         model="gpt-4o-mini",
-        input=[{
-            "role": "system",
-            "content": SYSTEM_PROMPT
-        },{
-            "role": "assistant",
-            "content": CONTEXT.format(GENERAL_RULES, licensing_rules)
-        },{
-            "role": "user",
-            "content": """Apparel Design Analysis: {}\nReview the apparel design analysis for compliance with following general and licensing rules. 
+        input=[
+            {
+                "role": "system",
+                "content": SYSTEM_PROMPT
+            },{
+                "role": "assistant",
+                "content": CONTEXT.format(GENERAL_RULES, licensing_rules)
+            },{
+                "role": "user",
+                "content": """Apparel Design Analysis: {}\nReview the apparel design analysis for compliance with following general and licensing rules. 
             Provide compliance status and violation reason, if any.""".format(analysis) 
-        }],
+            }],
         text_format= ComplianceOutput,
         temperature=0.0,  
         top_p=0.1
