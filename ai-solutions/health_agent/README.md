@@ -9,6 +9,11 @@ This repository contains an AI-driven agent system designed to automate wellness
 ![Agent Architecture](https://github.com/ikram98ai/health_agent/blob/main/imgs/Agent%20Architecture.png)
 
 
+ **Web app**
+ 
+![UI](https://github.com/ikram98ai/health_agent/blob/main/imgs/health_agent_web.png)
+
+
 
 # Project Setup Instructions
 

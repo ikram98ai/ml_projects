@@ -4,93 +4,458 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Rose AI Chat</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-            background-color: #f5f5f5;
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        * {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+        
+        .message-enter {
+            animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .typing-dot {
+            animation: typing 1.4s infinite ease-in-out;
+        }
+        
+        .typing-dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+        
+        .typing-dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+        
+        @keyframes typing {
+            0%, 60%, 100% {
+                transform: scale(0.8);
+                opacity: 0.5;
+            }
+            30% {
+                transform: scale(1);
+                opacity: 1;
+            }
         }
 
-        .chat-container {
-            background-color: white;
+        .chat-container::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .chat-container::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .chat-container::-webkit-scrollbar-thumb {
+            background: #d1d5db;
             border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            padding: 20px;
-            height: 70vh;
-            overflow-y: auto;
-            margin-bottom: 20px;
         }
 
-        .message {
-            margin: 10px 0;
-            padding: 10px;
-            border-radius: 5px;
+        .chat-container::-webkit-scrollbar-thumb:hover {
+            background: #9ca3af;
         }
 
-        .user-message {
-            background-color: #e3f2fd;
-            margin-left: 20%;
+        .sidebar-collapsed {
+            transform: translateX(-100%);
         }
 
-        .ai-message {
-            background-color: #f5f5f5;
-            margin-right: 20%;
+        textarea {
+            resize: none;
+            max-height: 200px;
         }
 
-        .input-container {
-            display: flex;
-            gap: 10px;
+        .suggestion-card {
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
-        input[type="text"] {
-            flex: 1;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
+        .suggestion-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
         }
 
-        button {
-            padding: 10px 20px;
-            background-color: #007bff;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
+        .chat-history-item {
+            transition: all 0.2s ease;
         }
 
-        button:hover {
-            background-color: #0056b3;
+        .chat-history-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .upload-zone {
+            transition: all 0.3s ease;
+        }
+
+        .upload-zone:hover {
+            border-color: #3b82f6;
+            background: rgba(59, 130, 246, 0.05);
+        }
+
+        .send-button {
+            transition: all 0.2s ease;
+        }
+
+        .send-button:not(:disabled):hover {
+            transform: scale(1.05);
+        }
+
+        .send-button:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .gradient-border {
+            position: relative;
+            background: linear-gradient(white, white) padding-box,
+                        linear-gradient(135deg, #667eea 0%, #764ba2 100%) border-box;
+            border: 2px solid transparent;
+        }
+
+        @keyframes shimmer {
+            0% {
+                background-position: -1000px 0;
+            }
+            100% {
+                background-position: 1000px 0;
+            }
+        }
+
+        .shimmer {
+            animation: shimmer 2s infinite linear;
+            background: linear-gradient(to right, #f6f7f8 0%, #edeef1 20%, #f6f7f8 40%, #f6f7f8 100%);
+            background-size: 1000px 100%;
         }
     </style>
 </head>
-<body>
-    <h1>Chat with Rose AI</h1>
-    <div class="chat-container" id="chatContainer"></div>
-    <div class="input-container">
-        <input type="text" id="messageInput" placeholder="Type your message...">
-        <button onclick="sendMessage()">Send</button>
+<body class="bg-white antialiased">
+    <div class="flex h-screen overflow-hidden">
+        <!-- Sidebar -->
+        <div id="sidebar" class="w-64 bg-gray-900 flex flex-col transition-all duration-300 ease-in-out shadow-2xl z-20">
+            <!-- Logo & New Chat -->
+            <div class="p-3 space-y-2">
+                <div class="flex items-center gap-2 px-3 py-2">
+                    <div class="w-7 h-7 bg-gradient-to-br from-pink-500 via-purple-500 to-indigo-500 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-rose text-white text-sm"></i>
+                    </div>
+                    <span class="text-white font-semibold text-lg">Rose AI</span>
+                </div>
+                <button onclick="createNewChat()" class="w-full flex items-center gap-3 px-3 py-2.5 bg-white bg-opacity-10 hover:bg-opacity-20 rounded-lg transition-all group">
+                    <i class="fas fa-plus text-white text-sm"></i>
+                    <span class="text-white font-medium text-sm">New chat</span>
+                </button>
+            </div>
+
+            <!-- Chat History -->
+            <div class="flex-1 overflow-y-auto px-3 py-2">
+                <div class="text-xs font-semibold text-gray-400 px-3 py-2 uppercase tracking-wider">Today</div>
+                <div class="space-y-1" id="chatHistory">
+                    <!-- Chat history items -->
+                </div>
+            </div>
+
+            <!-- Upload Section -->
+            <div class="border-t border-gray-800 p-3 space-y-3">
+                <button onclick="toggleUpload()" class="w-full flex items-center justify-between px-3 py-2 hover:bg-gray-800 rounded-lg transition-colors group">
+                    <div class="flex items-center gap-2">
+                        <i class="fas fa-cloud-upload-alt text-gray-400 group-hover:text-white transition-colors"></i>
+                        <span class="text-gray-300 text-sm font-medium">Upload Documents</span>
+                    </div>
+                    <i id="uploadChevron" class="fas fa-chevron-down text-gray-400 text-xs transition-transform"></i>
+                </button>
+                
+                <div id="uploadSection" class="space-y-2 max-h-0 overflow-hidden transition-all duration-300">
+                    <input type="text" id="collectionName" placeholder="Collection name" 
+                        class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all">
+                    
+                    <div class="relative upload-zone border-2 border-dashed border-gray-700 rounded-lg">
+                        <input type="file" id="documentInput" accept=".pdf,.docx" class="hidden">
+                        <label for="documentInput" class="flex flex-col items-center justify-center px-3 py-4 cursor-pointer">
+                            <i class="fas fa-file-upload text-gray-500 text-xl mb-2"></i>
+                            <span id="fileName" class="text-xs text-gray-400 text-center">Click to upload PDF or DOCX</span>
+                        </label>
+                    </div>
+                    
+                    <button onclick="uploadDocument()" class="w-full px-3 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 rounded-lg text-sm font-medium text-white transition-all transform hover:scale-[1.02]">
+                        <i class="fas fa-upload mr-2"></i>Upload
+                    </button>
+                    <div id="uploadStatus" class="hidden text-xs p-2 rounded-lg"></div>
+                </div>
+            </div>
+
+            <!-- User Section -->
+            <div class="border-t border-gray-800 p-3">
+                <div class="flex items-center gap-3 px-3 py-2.5 hover:bg-gray-800 rounded-lg cursor-pointer transition-all group">
+                    <div class="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center ring-2 ring-gray-700 group-hover:ring-purple-500 transition-all">
+                        <i class="fas fa-user text-white text-xs"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="text-sm font-medium text-white truncate">Guest User</div>
+                        <div class="text-xs text-gray-400">Online</div>
+                    </div>
+                    <i class="fas fa-ellipsis-h text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Chat Area -->
+        <div class="flex-1 flex flex-col bg-white relative">
+            <!-- Top Bar -->
+            <div class="h-14 border-b border-gray-200 flex items-center justify-between px-4 bg-white sticky top-0 z-10">
+                <div class="flex items-center gap-3">
+                    <button onclick="toggleSidebar()" class="p-2 hover:bg-gray-100 rounded-lg transition-colors lg:hidden">
+                        <i class="fas fa-bars text-gray-600"></i>
+                    </button>
+                    <div class="hidden lg:flex items-center gap-2">
+                        <div class="text-sm font-semibold text-gray-800">Rose AI Chat</div>
+                        <span class="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded-full">Online</span>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button class="p-2 hover:bg-gray-100 rounded-lg transition-colors" title="Settings">
+                        <i class="fas fa-cog text-gray-600"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Chat Messages -->
+            <div id="chatContainer" class="flex-1 overflow-y-auto chat-container">
+                <!-- Empty State -->
+                <div id="emptyState" class="h-full flex flex-col items-center justify-center px-4 py-8">
+                    <div class="max-w-3xl w-full space-y-8">
+                        <!-- Hero Section -->
+                        <div class="text-center space-y-4">
+                            <div class="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-pink-500 via-purple-500 to-indigo-500 rounded-2xl shadow-lg mb-2">
+                                <i class="fas fa-robot text-white text-3xl"></i>
+                            </div>
+                            <h1 class="text-4xl font-bold text-gray-900 tracking-tight">Welcome to Rose AI</h1>
+                            <p class="text-lg text-gray-600 max-w-2xl mx-auto">Your intelligent companion for conversations, wellness checks, and document analysis. How can I assist you today?</p>
+                        </div>
+                        
+                        <!-- Quick Actions -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <button onclick="startWellnessCheck()" class="suggestion-card p-5 border-2 border-gray-200 rounded-2xl hover:border-pink-300 transition-all text-left group bg-white">
+                                <div class="w-10 h-10 bg-pink-100 rounded-xl flex items-center justify-center mb-3 group-hover:bg-pink-200 transition-colors">
+                                    <i class="fas fa-heartbeat text-pink-600 text-lg"></i>
+                                </div>
+                                <div class="font-semibold text-gray-900 mb-1">Wellness Check</div>
+                                <div class="text-sm text-gray-600">Start a wellness assessment</div>
+                            </button>
+                        
+                            <button onclick="sendSuggestion('I want to search for health information in my documents')" class="suggestion-card p-5 border-2 border-gray-200 rounded-2xl hover:border-indigo-300 transition-all text-left group bg-white">
+                                <div class="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center mb-3 group-hover:bg-indigo-200 transition-colors">
+                                    <i class="fas fa-file-alt text-indigo-600 text-lg"></i>
+                                </div>
+                                <div class="font-semibold text-gray-900 mb-1">Document Search</div>
+                                <div class="text-sm text-gray-600">Find info in health documents</div>
+                            </button>
+                            
+                            <button onclick="sendSuggestion('I would like to watch a video for my hip therapy')" class="suggestion-card p-5 border-2 border-gray-200 rounded-2xl hover:border-purple-300 transition-all text-left group bg-white">
+                                <div class="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center mb-3 group-hover:bg-purple-200 transition-colors">
+                                    <i class="fas fa-video text-purple-600 text-lg"></i>
+                                </div>
+                                <div class="font-semibold text-gray-900 mb-1">Video Search</div>
+                                <div class="text-sm text-gray-600">Find videos for therapy or fun</div>
+                            </button>   
+                            
+                            <button onclick="sendSuggestion('I would like to explore some classes or activities for today')" class="suggestion-card p-5 border-2 border-gray-200 rounded-2xl hover:border-green-300 transition-all text-left group bg-white">
+                                <div class="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center mb-3 group-hover:bg-green-200 transition-colors">
+                                    <i class="fas fa-users text-green-600 text-lg"></i>
+                                </div>
+                                <div class="font-semibold text-gray-900 mb-1">Classes Search</div>
+                                <div class="text-sm text-gray-600">Discover and enroll in activities</div>
+                            </button>
+                            
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Typing Indicator -->
+            <div id="typingIndicator" class="hidden px-4 py-4 bg-gray-50">
+                <div class="max-w-3xl mx-auto">
+                    <div class="flex gap-3 items-start">
+                        <div class="w-8 h-8 bg-gradient-to-br from-pink-500 via-purple-500 to-indigo-500 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm">
+                            <i class="fas fa-robot text-white text-sm"></i>
+                        </div>
+                        <div class="flex items-center gap-2 px-4 py-3 bg-white rounded-2xl shadow-sm border border-gray-100">
+                            <div class="w-2 h-2 bg-gray-400 rounded-full typing-dot"></div>
+                            <div class="w-2 h-2 bg-gray-400 rounded-full typing-dot"></div>
+                            <div class="w-2 h-2 bg-gray-400 rounded-full typing-dot"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Input Area -->
+            <div class="border-t border-gray-200 bg-white px-4 py-4">
+                <div class="max-w-3xl mx-auto">
+                    <div class="relative flex items-end gap-2">
+                        <div class="flex-1 relative">
+                            <textarea 
+                                id="messageInput" 
+                                rows="1"
+                                placeholder="Message Rose AI..." 
+                                class="w-full px-4 py-3 pr-12 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900 placeholder-gray-500 transition-all"
+                                onkeydown="handleKeyDown(event)"
+                                oninput="autoResize(this)"
+                            ></textarea>
+                            <button 
+                                onclick="sendMessage()" 
+                                class="send-button absolute right-2 bottom-2 w-8 h-8 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 disabled:from-gray-300 disabled:to-gray-300 rounded-lg flex items-center justify-center transition-all shadow-sm" 
+                                id="sendButton"
+                                disabled
+                            >
+                                <i class="fas fa-arrow-up text-white text-sm"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between mt-3 px-2">
+                        <div class="flex items-center gap-4">
+                            <button onclick="startWellnessCheck()" class="text-xs text-gray-500 hover:text-purple-600 flex items-center gap-1.5 transition-colors font-medium">
+                                <i class="fas fa-heartbeat"></i>
+                                <span>Wellness Check</span>
+                            </button>
+                            <button onclick="sendSuggestion('I would like to watch a video for my hip therapy')" class="text-xs text-gray-500 hover:text-purple-600 flex items-center gap-1.5 transition-colors font-medium">
+                                <i class="fas fa-video"></i>
+                                <span>Video Search</span>
+                            </button>
+                            <button onclick="sendSuggestion('I want to search for health information in my documents')" class="text-xs text-gray-500 hover:text-purple-600 flex items-center gap-1.5 transition-colors font-medium">
+                                <i class="fas fa-file-alt"></i>
+                                <span>Document Search</span>
+                            </button>
+                            <button onclick="sendSuggestion('I would like to explore some classes or activities for today')" class="text-xs text-gray-500 hover:text-purple-600 flex items-center gap-1.5 transition-colors font-medium">
+                                <i class="fas fa-users"></i>
+                                <span>Classes Search</span>
+                            </button>
+                        </div>
+                        <div class="text-xs text-gray-400">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            Press Enter to send
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
-    <div class="upload-container" style="margin-top: 20px;">
-        <h3>Upload Documents</h3>
-        <input type="text" id="collectionName" placeholder="Collection Name" style="margin-bottom: 10px; padding: 8px; width: 200px;">
-        <input type="file" id="documentInput" accept=".pdf,.docx" style="margin-bottom: 10px;">
-        <button onclick="uploadDocument()" style="background-color: #28a745;">Upload Document</button>
-        <div id="uploadStatus" style="margin-top: 10px; color: #666;"></div>
-    </div>
+    <!-- Mobile Sidebar Overlay -->
+    <div id="sidebarOverlay" class="fixed inset-0 bg-black bg-opacity-50 z-10 hidden lg:hidden" onclick="toggleSidebar()"></div>
 
     <script>
         const chatContainer = document.getElementById('chatContainer');
         const messageInput = document.getElementById('messageInput');
+        const sendButton = document.getElementById('sendButton');
+        const typingIndicator = document.getElementById('typingIndicator');
+        const emptyState = document.getElementById('emptyState');
+        const documentInput = document.getElementById('documentInput');
+        const fileName = document.getElementById('fileName');
+        const sidebar = document.getElementById('sidebar');
+        const sidebarOverlay = document.getElementById('sidebarOverlay');
+        let inWellnessCheck = false;
+
+        // Enable/disable send button based on input
+        messageInput.addEventListener('input', function() {
+            sendButton.disabled = !this.value.trim();
+        });
+
+        documentInput.addEventListener('change', function() {
+            if (this.files.length > 0) {
+                fileName.innerHTML = `<i class="fas fa-file-check text-green-500 mr-1"></i>${this.files[0].name}`;
+            } else {
+                fileName.innerHTML = 'Click to upload PDF or DOCX';
+            }
+        });
+
+        function toggleSidebar() {
+            sidebar.classList.toggle('sidebar-collapsed');
+            sidebarOverlay.classList.toggle('hidden');
+        }
+
+        function toggleUpload() {
+            const section = document.getElementById('uploadSection');
+            const chevron = document.getElementById('uploadChevron');
+            
+            if (section.style.maxHeight && section.style.maxHeight !== '0px') {
+                section.style.maxHeight = '0px';
+                chevron.style.transform = 'rotate(0deg)';
+            } else {
+                section.style.maxHeight = section.scrollHeight + 'px';
+                chevron.style.transform = 'rotate(180deg)';
+            }
+        }
+
+        function createNewChat() {
+            chatContainer.innerHTML = '';
+            emptyState.classList.remove('hidden');
+            chatContainer.appendChild(emptyState);
+            inWellnessCheck = false;
+            messageInput.value = '';
+            sendButton.disabled = true;
+        }
+
+        function removeEmptyState() {
+            if (emptyState && !emptyState.classList.contains('hidden')) {
+                emptyState.classList.add('hidden');
+            }
+        }
 
         function addMessage(message, isUser = false) {
+            removeEmptyState();
+            
             const messageDiv = document.createElement('div');
-            messageDiv.className = `message ${isUser ? 'user-message' : 'ai-message'}`;
-            messageDiv.textContent = message;
+            messageDiv.className = `px-4 py-6 ${isUser ? 'bg-white' : 'bg-gray-50'} message-enter`;
+            
+            const content = document.createElement('div');
+            content.className = 'max-w-3xl mx-auto flex gap-4';
+            
+            const avatar = document.createElement('div');
+            avatar.className = `w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm ${
+                isUser 
+                    ? 'bg-gradient-to-br from-purple-500 to-pink-500' 
+                    : 'bg-gradient-to-br from-pink-500 via-purple-500 to-indigo-500'
+            }`;
+            avatar.innerHTML = `<i class="fas ${isUser ? 'fa-user' : 'fa-robot'} text-white text-sm"></i>`;
+            
+            const messageContent = document.createElement('div');
+            messageContent.className = 'flex-1 space-y-2 pt-0.5';
+            
+            const name = document.createElement('div');
+            name.className = 'font-semibold text-sm text-gray-900 mb-1';
+            name.textContent = isUser ? 'You' : 'Rose AI';
+            
+            const text = document.createElement('div');
+            text.className = 'text-gray-800 text-[15px] leading-relaxed whitespace-pre-wrap';
+            text.textContent = message;
+            
+            messageContent.appendChild(name);
+            messageContent.appendChild(text);
+            content.appendChild(avatar);
+            content.appendChild(messageContent);
+            messageDiv.appendChild(content);
+            
             chatContainer.appendChild(messageDiv);
-            chatContainer.scrollTop = chatContainer.scrollHeight;
+            chatContainer.scrollTo({
+                top: chatContainer.scrollHeight,
+                behavior: 'smooth'
+            });
+        }
+
+        function sendSuggestion(text) {
+            messageInput.value = text;
+            sendButton.disabled = false;
+            sendMessage();
         }
 
         async function sendMessage() {
@@ -99,6 +464,9 @@
 
             addMessage(message, true);
             messageInput.value = '';
+            messageInput.style.height = 'auto';
+            sendButton.disabled = true;
+            typingIndicator.classList.remove('hidden');
 
             try {
                 const response = await fetch('http://localhost:3008/chat', {
@@ -107,7 +475,7 @@
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        message: message
+                        message: inWellnessCheck ? `wellness_check_response: ${message}` : message
                     })
                 });
 
@@ -116,56 +484,124 @@
                 }
 
                 const data = await response.json();
-                addMessage(data.response);
+                setTimeout(() => {
+                    addMessage(data.response);
+                }, 600);
+
+                if (data.response.includes("Thank you for completing the wellness check")) {
+                    inWellnessCheck = false;
+                }
+
             } catch (error) {
                 console.error('Error:', error);
-                addMessage('Sorry, there was an error processing your request.');
+                setTimeout(() => {
+                    addMessage('Sorry, there was an error processing your request. Please try again later.');
+                }, 600);
+            } finally {
+                setTimeout(() => {
+                    typingIndicator.classList.add('hidden');
+                }, 600);
             }
         }
 
-        // Allow sending messages with Enter key
-        messageInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                sendMessage();
+        async function startWellnessCheck() {
+            inWellnessCheck = true;
+            addMessage("I'd like to start a wellness check", true);
+            typingIndicator.classList.remove('hidden');
+
+            try {
+                const response = await fetch('http://localhost:3008/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        message: "start_wellness_check"
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+
+                const data = await response.json();
+                setTimeout(() => {
+                    addMessage(data.response);
+                }, 800);
+            } catch (error) {
+                console.error('Error:', error);
+                setTimeout(() => {
+                    addMessage('Sorry, there was an error starting the wellness check. Please try again later.');
+                }, 600);
+                inWellnessCheck = false;
+            } finally {
+                setTimeout(() => {
+                    typingIndicator.classList.add('hidden');
+                }, 800);
             }
-        });
+        }
 
+        function handleKeyDown(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                if (!sendButton.disabled) {
+                    sendMessage();
+                }
+            }
+        }
 
-        
+        function autoResize(textarea) {
+            textarea.style.height = 'auto';
+            textarea.style.height = Math.min(textarea.scrollHeight, 200) + 'px';
+        }
+
         async function uploadDocument() {
-        const fileInput = document.getElementById('documentInput');
-        const collectionName = document.getElementById('collectionName').value;
-        const statusDiv = document.getElementById('uploadStatus');
-        
-        if (!collectionName || !fileInput.files[0]) {
-            statusDiv.textContent = 'Please fill collection name and select a file';
-            return;
-        }
-
-        const formData = new FormData();
-        formData.append('document', fileInput.files[0]);
-        formData.append('collectionName', collectionName);
-
-        try {
-            statusDiv.textContent = 'Uploading...';
-            const response = await fetch('http://localhost:3008/upload', {
-                method: 'POST',
-                body: formData
-            });
-
-            const result = await response.json();
-            if (response.ok) {
-                statusDiv.textContent = `Upload successful! Document ID: ${result.documentId}`;
-                fileInput.value = ''; // Clear file input
-            } else {
-                statusDiv.textContent = `Error: ${result.error}`;
+            const fileInput = document.getElementById('documentInput');
+            const collectionName = document.getElementById('collectionName').value;
+            const statusDiv = document.getElementById('uploadStatus');
+            
+            if (!collectionName || !fileInput.files[0]) {
+                statusDiv.className = 'text-xs p-2 rounded-lg bg-red-50 text-red-700 border border-red-200';
+                statusDiv.innerHTML = '<i class="fas fa-exclamation-circle mr-1"></i> Please provide collection name and select a file';
+                statusDiv.classList.remove('hidden');
+                return;
             }
-        } catch (error) {
-            console.error('Upload error:', error);
-            statusDiv.textContent = 'Upload failed. Please try again.';
-        }
-    }
 
+            const formData = new FormData();
+            formData.append('document', fileInput.files[0]);
+            formData.append('collectionName', collectionName);
+
+            try {
+                statusDiv.className = 'text-xs p-2 rounded-lg bg-blue-50 text-blue-700 border border-blue-200';
+                statusDiv.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Uploading document...';
+                statusDiv.classList.remove('hidden');
+                
+                const response = await fetch('http://localhost:3008/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+                if (response.ok) {
+                    statusDiv.className = 'text-xs p-2 rounded-lg bg-green-50 text-green-700 border border-green-200';
+                    statusDiv.innerHTML = `<i class="fas fa-check-circle mr-1"></i> Upload successful!`;
+                    fileInput.value = '';
+                    fileName.innerHTML = 'Click to upload PDF or DOCX';
+                    document.getElementById('collectionName').value = '';
+                    
+                    setTimeout(() => {
+                        statusDiv.classList.add('hidden');
+                    }, 3000);
+                } else {
+                    statusDiv.className = 'text-xs p-2 rounded-lg bg-red-50 text-red-700 border border-red-200';
+                    statusDiv.innerHTML = `<i class="fas fa-times-circle mr-1"></i> ${result.error || 'Upload failed'}`;
+                }
+            } catch (error) {
+                console.error('Upload error:', error);
+                statusDiv.className = 'text-xs p-2 rounded-lg bg-red-50 text-red-700 border border-red-200';
+                statusDiv.innerHTML = '<i class="fas fa-exclamation-triangle mr-1"></i> Network error. Please try again.';
+            }
+        }
     </script>
 </body>
 </html>
