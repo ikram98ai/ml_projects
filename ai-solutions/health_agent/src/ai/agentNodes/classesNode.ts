@@ -32,7 +32,6 @@ export default async function createClassesNode() {
     );
     const result = await classAgent.invoke(state, config);
     const lastMessage = result.messages[result.messages.length - 1];
-    console.log("classes agent response::", lastMessage);
 
     return {
       messages: [new AIMessage({ content: lastMessage.content })],

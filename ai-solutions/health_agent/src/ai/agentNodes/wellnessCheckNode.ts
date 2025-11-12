@@ -53,8 +53,6 @@ Ensure your tone remains empathetic and clear throughout the interaction. Your p
     );
     const result = await wellnessCheckAgent.invoke(state, config);
     const lastMessage = result.messages[result.messages.length - 1];
-    console.log("wellness check agent response::", lastMessage);
-
     return {
       messages: [new AIMessage({ content: lastMessage.content })],
     };

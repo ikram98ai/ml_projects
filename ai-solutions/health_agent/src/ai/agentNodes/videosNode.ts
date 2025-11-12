@@ -32,7 +32,6 @@ export default async function createVideosNode() {
     );
     const result = await classAgent.invoke(state, config);
     const lastMessage = result.messages[result.messages.length - 1];
-    console.log("videos agent response::", lastMessage);
 
     return {
       messages: [new AIMessage({ content: lastMessage.content })],

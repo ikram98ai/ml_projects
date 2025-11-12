@@ -32,7 +32,6 @@ export default async function createDocumentsNode() {
 
     const result = await documentsAgent.invoke(state, config);
     const lastMessage = result.messages[result.messages.length - 1];
-    console.log("social chat agent response::", lastMessage);
     return {
       messages: [new AIMessage({ content: lastMessage.content })],
     };

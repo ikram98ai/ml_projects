@@ -1,6 +1,19 @@
 import { DynamicStructuredTool } from "@langchain/core/tools";
 import { z } from "zod";
 import { queryDocuments } from "./rag";
+import { EventEmitter } from "events";
+
+export const toolEmitter = new EventEmitter();
+
+export class ToolExecution {
+  toolName: string;
+  args: any[];
+
+  constructor(toolName: string, args: any) {
+    this.toolName = toolName;
+    this.args = args;
+  }
+}
 
 export const semanticSearchTool = new DynamicStructuredTool({
   name: "semantic_search",
@@ -17,6 +30,10 @@ export const semanticSearchTool = new DynamicStructuredTool({
   func: async ({ query, collection }) => {
     console.log(
       `Semantic Seach in collection: ${collection} with query: ${query}`
+    );
+    toolEmitter.emit(
+      "tool-call",
+      new ToolExecution("semantic_search", { query, collection })
     );
 
     const results = await queryDocuments(query, collection);
@@ -36,6 +53,7 @@ export const alertCnaTool = new DynamicStructuredTool({
   }),
   func: async ({ redFlag }) => {
     console.log("Alert CNA with:: ", redFlag);
+    toolEmitter.emit("tool-call", new ToolExecution("alert_cna", { redFlag }));
     return `${redFlag} is sent to alert CNA.`;
   },
 });
@@ -51,6 +69,10 @@ export const alertFamilyTool = new DynamicStructuredTool({
   }),
   func: async ({ redFlag }) => {
     console.log("Alert family with:: ", redFlag);
+    toolEmitter.emit(
+      "tool-call",
+      new ToolExecution("alert_family", { redFlag })
+    );
     return `${redFlag} is sent to alert family.`;
   },
 });
@@ -64,6 +86,10 @@ export const recommendClassesTool = new DynamicStructuredTool({
   }),
   func: async ({ userQuery }) => {
     console.log("recommendClassesTool got user query:", userQuery);
+    toolEmitter.emit(
+      "tool-call",
+      new ToolExecution("recommend_classes", { userQuery })
+    );
     const results = await queryDocuments(userQuery, "classes");
     return `class id  1, title fixing bleeding; class id 2, title stoping blood; class id 3, using bandage`;
   },
@@ -77,6 +103,10 @@ export const classEnrollmentTool = new DynamicStructuredTool({
   }),
   func: async ({ classId }) => {
     console.log("User enrolled in class:: ", classId);
+    toolEmitter.emit(
+      "tool-call",
+      new ToolExecution("enroll_class", { classId })
+    );
     return `User is enrolled in class ${classId}`;
   },
 });
@@ -90,6 +120,10 @@ export const recommendVideosTool = new DynamicStructuredTool({
   }),
   func: async ({ userQuery }) => {
     console.log("recommendVideosTool got user query:", userQuery);
+    toolEmitter.emit(
+      "tool-call",
+      new ToolExecution("recommend_videos", { userQuery })
+    );
     const results = await queryDocuments(userQuery, "videos");
     return `video id  1, title fixing bleeding; video id 2, title stoping blood; video id 3, using bandage`;
   },
@@ -104,19 +138,7 @@ export const playVideoTool = new DynamicStructuredTool({
   }),
   func: async ({ videoId }) => {
     console.log("playVideoTool got user query:", videoId);
+    toolEmitter.emit("tool-call", new ToolExecution("play_video", { videoId }));
     return `playing video with id ${videoId}`;
   },
 });
-
-
-
-// send_cna_alert(message) -> {"status": "sent", "message": message}
-// mongo_semantic_search(query, collection) -> {"results": [f"{collection}item{i}" for i in range(3)]}
-// schedule_uber_ride(details) -> {"status": "scheduled", "details": details}
-// place_order(order_details) -> {"status": "placed", "order": order_details}
-// get_family_approval(order) -> {"approved": True, "reason": "Looks good"}
-// get_agent_summary(agent_name) -> f"Summary from {agent_name}"
-// send_family_alert(message) -> {"status": "sent", "message": message}
-// book_resource(resource_id) -> {"status": "booked", "resource_id": resource_id}
-// enroll_class(class_id) -> {"status": "enrolled", "class_id": class_id}
-// play_video(video_id) -> {"status": "playing", "video_id": video_id}

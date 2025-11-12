@@ -27,7 +27,8 @@ import { createGraph } from "./ai/graph";
 import { HumanMessage } from "@langchain/core/messages";
 import multer from "multer";
 import fs from "fs";
-import { processDocument, storeDocument, queryDocuments } from "./ai/rag";
+import { processDocument, storeDocument } from "./ai/rag";
+import { toolEmitter, ToolExecution } from "./ai/tools";
 
 if (!fs.existsSync("uploads")) {
   fs.mkdirSync("uploads");
@@ -100,7 +101,13 @@ app.post(
 app.post("/chat/", async (req: Request, res: Response) => {
   try {
     const { message } = req.body;
-  
+    const toolCalls: ToolExecution[] = [];
+
+    const toolCallListener = (toolCall: ToolExecution) => {
+      toolCalls.push(toolCall);
+    };
+    toolEmitter.on("tool-call", toolCallListener);
+
     const inputMessage = new HumanMessage({ content: message });
     const config = {
       configurable: { thread_id: "2" },
@@ -114,11 +121,11 @@ app.post("/chat/", async (req: Request, res: Response) => {
       { messages: [inputMessage] },
       config
     );
-
     let finalResponse = streamResults.messages[streamResults.messages.length - 1];
 
-    console.log("Final Response::", finalResponse);
-    res.json({ response: finalResponse.content });
+    toolEmitter.off("tool-call", toolCallListener);
+
+    res.json({ response: finalResponse.content, tool_calls: toolCalls });
   } catch (error) {
     console.error("Error processing request:", error);
     res.status(500).json({ error: "Internal server error" });
