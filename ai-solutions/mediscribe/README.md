@@ -6,13 +6,14 @@ This is a Proof of Concept for a healthcare application that integrates AI and a
 - **Audio Recording/Upload**: Record patient consultations or upload audio files.
 - **AI Transcription & Summarization**: Uses Google Gemini to transcribe and summarize audio.
 - **Secure Storage**: Stores audio and transcripts in AWS S3 and metadata in PynamoDB.
-- **Modern UI**: Apple-like aesthetic using simple HTML/CSS/JS.
+- **Modern UI**: React + TailwindCSS.
 
 ## Setup
 
 1. **Install Dependencies**:
    ```bash
-   pip install -r requirements.txt
+   uv sync
+   cd web && npm install
    ```
 
 2. **Environment Variables**:
@@ -22,21 +23,22 @@ This is a Proof of Concept for a healthcare application that integrates AI and a
 
 3. **Run the Application**:
    ```bash
-   uvicorn app.main:app --reload
+   make build 
+   make dev
    ```
 
 4. **Access the App**:
    Open `http://localhost:8000` in your browser.
 
-## Usage
-1. **Login**: Use any username/password (User creation is manual in DB for POC, or use the registration endpoint if added. *Note: For this POC, you might need to manually create a user in DynamoDB or add a register endpoint. Wait, I didn't add a register endpoint. I should probably add a script to create a user.*)
+## Screenshot
 
-## Creating a User
-Since there is no registration UI, use the provided script `create_user.py` (to be created) or add a user to the DynamoDB table `healthcare_poc_users` with `username` and `password_hash`.
+![App screenshot](web/assets/sc.png)
 
+
+#
 ## Tech Stack
 - **Backend**: FastAPI
 - **Database**: PynamoDB (DynamoDB)
 - **Storage**: AWS S3
 - **AI**: Google Gemini
-- **Frontend**: Jinja2 Templates + Vanilla JS/CSS
+- **Frontend**: React + tailwindcss
