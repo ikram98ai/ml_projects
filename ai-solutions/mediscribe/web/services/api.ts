@@ -18,14 +18,25 @@ export interface TranscriptStatus {
     status: string;
 }
 
+export interface UpdateTranscriptResponse {
+    id:string;
+    title: string;
+}
+
 export interface AskResponse {
   answer: string;
 }
 
 // Helper function to get auth headers
-const getAuthHeaders = (token: string): HeadersInit => ({
-  'Authorization': `Bearer ${token}`,
-});
+const getAuthHeaders = (token: string, contentType: string = 'application/json'): HeadersInit => {
+    const headers: HeadersInit = {
+      'Authorization': `Bearer ${token}`,
+    };
+    if (contentType) {
+        headers['Content-Type'] = contentType;
+    }
+    return headers;
+};
 
 // Authentication API
 export const login = async (username: string, password: string): Promise<TokenResponse> => {
@@ -78,7 +89,7 @@ export const uploadAudio = async (audioBlob: Blob, title: string, token: string)
 
   const response = await fetch(`${API_BASE}/audio/upload`, {
     method: 'POST',
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token, null), // Let browser set Content-Type for FormData
     body: formData,
   });
 
@@ -128,6 +139,31 @@ export const getTranscriptStatus = async (transcriptId: string, token: string): 
 
     return response.json();
 }
+
+export const updateTranscriptTitle = async (transcriptId: string, title: string, token: string): Promise<UpdateTranscriptResponse> => {
+    const response = await fetch(`${API_BASE}/audio/${transcriptId}`, {
+        method: 'PATCH',
+        headers: getAuthHeaders(token),
+        body: JSON.stringify({ title }),
+    });
+
+    if (!response.ok) {
+        throw new Error('Failed to update transcript title');
+    }
+
+    return response.json();
+};
+
+export const deleteTranscript = async (transcriptId: string, token: string): Promise<void> => {
+    const response = await fetch(`${API_BASE}/audio/${transcriptId}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders(token),
+    });
+
+    if (!response.ok) {
+        throw new Error('Failed to delete transcript');
+    }
+};
 
 export const askQuestion = async (
   transcriptId: string,

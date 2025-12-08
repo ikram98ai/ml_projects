@@ -4,7 +4,15 @@ import { Sidebar } from './Sidebar';
 import { AudioDetail } from './AudioDetail';
 import { AudioRecorder } from './AudioRecorder';
 import { TranscriptListItem, Transcript } from '../types';
-import { listTranscripts, getTranscript, uploadAudio, askQuestion, getTranscriptStatus } from '../services/api';
+import { 
+  listTranscripts, 
+  getTranscript, 
+  uploadAudio, 
+  askQuestion, 
+  getTranscriptStatus,
+  updateTranscriptTitle,
+  deleteTranscript,
+} from '../services/api';
 
 type View = 'list' | 'detail' | 'record';
 
@@ -181,6 +189,40 @@ export const Dashboard: React.FC = () => {
     }
   };
 
+  const handleUpdateTitle = async (id: string, newTitle: string) => {
+    if (!id) return;
+
+    try {
+      await updateTranscriptTitle(id, newTitle, token!);
+      // Optimistically update UI
+      if (selectedId === id) {
+        setSelectedTranscript(prev => prev ? { ...prev, title: newTitle } : null);
+      }
+      setTranscripts(prev => prev.map(t => t.id === id ? { ...t, title: newTitle } : t));
+    } catch (error) {
+      console.error('Failed to update title:', error);
+      alert('Failed to update title. Please try again.');
+    }
+  };
+
+  const handleDeleteTranscript = async (id: string) => {
+    if (!id) return;
+
+    try {
+      await deleteTranscript(id, token!);
+      // Optimistically update UI
+      setTranscripts(prev => prev.filter(t => t.id !== id));
+      if (selectedId === id) {
+        setSelectedId(null);
+        setSelectedTranscript(null);
+        setView('list');
+      }
+    } catch (error) {
+      console.error('Failed to delete transcript:', error);
+      alert('Failed to delete transcript. Please try again.');
+    }
+  };
+
   return (
     <div className="h-screen flex flex-col">
       {/* Header */}
@@ -225,6 +267,8 @@ export const Dashboard: React.FC = () => {
             selectedId={selectedId}
             onSelect={handleSelectTranscript}
             onNewAudio={handleNewAudio}
+            onUpdateTitle={handleUpdateTitle}
+            onDelete={handleDeleteTranscript}
             isLoading={isLoadingList}
           />
         </div>
@@ -235,8 +279,8 @@ export const Dashboard: React.FC = () => {
             <div className="h-full flex items-center justify-center bg-slate-50">
               <div className="text-center max-w-md px-4">
                 <div className="bg-gradient-to-r from-blue-100 to-blue-300 rounded-full p-6 inline-block mb-4">
-                  <svg className="h-16 w-16 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
                   </svg>
                 </div>
                 <h2 className="text-2xl font-bold text-slate-800 mb-2">Welcome to MediScribe AI</h2>
@@ -271,6 +315,8 @@ export const Dashboard: React.FC = () => {
             <AudioDetail
               transcript={selectedTranscript}
               onSendMessage={handleSendMessage}
+              onUpdateTitle={(newTitle) => handleUpdateTitle(selectedId!, newTitle)}
+              onDelete={() => handleDeleteTranscript(selectedId!)}
               isChatLoading={isChatLoading}
             />
           ) : null}

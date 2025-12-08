@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Depends, UploadFile, File, Form, BackgroundTasks, HTTPException
+from fastapi import APIRouter, Depends, UploadFile, File, Form, BackgroundTasks, HTTPException, status
+from pydantic import BaseModel
 from app.api.deps import get_current_user
 from app.models import User, Transcript, Chat
-from app.services.storage import upload_file, upload_text, get_text_from_s3
+from app.services.storage import upload_file, upload_text, get_text_from_s3, delete_files
 from app.services.ai import process_audio, ask_question
 import json
 import shutil
@@ -10,6 +11,9 @@ import uuid
 
 router = APIRouter()
 
+# Pydantic model for updating the title
+class TranscriptUpdate(BaseModel):
+    title: str
 
 def process_audio_task(transcript_id: str, file_path: str):
     try:
@@ -88,9 +92,6 @@ async def upload_audio(
 async def list_transcripts(current_user: User = Depends(get_current_user)):
     # PynamoDB scan is expensive, but for POC it's fine.
     # Ideally use a GSI on user_id.
-    # For now, we will just scan and filter (inefficient but simple for POC).
-    # Or better, if we had a GSI.
-    # Let's assume we scan.
     results = []
     for item in Transcript.scan(Transcript.user_id == current_user.username):
         results.append(
@@ -169,6 +170,54 @@ async def get_transcript_status(
             raise HTTPException(status_code=403, detail="Not authorized")
 
         return {"id": transcript.id, "status": transcript.status}
+    except Transcript.DoesNotExist:
+        raise HTTPException(status_code=404, detail="Transcript not found")
+
+
+@router.patch("/{transcript_id}", response_model=dict)
+async def update_transcript_title(
+    transcript_id: str,
+    update: TranscriptUpdate,
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        transcript = Transcript.get(transcript_id)
+        if transcript.user_id != current_user.username:
+            raise HTTPException(status_code=403, detail="Not authorized")
+        
+        transcript.update(actions=[Transcript.title.set(update.title)])
+        return {"id": transcript.id, "title": update.title}
+    except Transcript.DoesNotExist:
+        raise HTTPException(status_code=404, detail="Transcript not found")
+
+@router.delete("/{transcript_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_transcript(
+    transcript_id: str, current_user: User = Depends(get_current_user)
+):
+    try:
+        transcript = Transcript.get(transcript_id)
+        if transcript.user_id != current_user.username:
+            raise HTTPException(status_code=403, detail="Not authorized")
+
+        # Delete associated chats
+        with Chat.batch_write() as batch:
+            for chat in Chat.scan(Chat.transcript_id == transcript_id):
+                batch.delete(chat)
+
+        # Delete associated S3 files
+        files_to_delete = []
+        if transcript.s3_audio_key:
+            files_to_delete.append(transcript.s3_audio_key)
+        if transcript.s3_transcript_key:
+            files_to_delete.append(transcript.s3_transcript_key)
+        
+        if files_to_delete:
+            delete_files(files_to_delete)
+
+        # Delete the transcript itself
+        transcript.delete()
+        
+        return
     except Transcript.DoesNotExist:
         raise HTTPException(status_code=404, detail="Transcript not found")
 

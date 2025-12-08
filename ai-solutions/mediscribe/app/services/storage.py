@@ -82,3 +82,22 @@ def get_text_from_s3(object_name):
     except ClientError as e:
         logger.error(e)
         return None
+
+def delete_files(object_names: list[str]) -> bool:
+    """Delete multiple files from the S3 bucket."""
+    if not object_names:
+        return True
+    
+    # Filter out any None or empty string keys
+    keys_to_delete = [name for name in object_names if name]
+    if not keys_to_delete:
+        return True
+
+    delete_payload = {"Objects": [{"Key": name} for name in keys_to_delete]}
+    try:
+        s3_client.delete_objects(Bucket=settings.S3_BUCKET_NAME, Delete=delete_payload)
+        logger.info("Deleted %s objects from S3", len(keys_to_delete))
+        return True
+    except ClientError as e:
+        logger.error("Failed to delete objects from S3: %s", e)
+        return False
