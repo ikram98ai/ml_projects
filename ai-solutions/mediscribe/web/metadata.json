@@ -1,0 +1,7 @@
+{
+  "name": "MediScribe AI",
+  "description": "A secure, AI-powered healthcare application for automated medical transcription and summarization using Gemini 2.5 Flash.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
