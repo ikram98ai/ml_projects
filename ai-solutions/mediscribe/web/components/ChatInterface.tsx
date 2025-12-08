@@ -25,7 +25,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ messages, onSendMe
   };
 
   return (
-    <div className="flex flex-col h-full bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+    <div className="flex flex-col h-full bg-white rounded-2xl border border-slate-200 shadow-sm overflow-y-auto custom-scrollbar">
        <div className="bg-slate-50 px-6 py-4 border-b border-slate-100">
         <h3 className="font-semibold text-slate-800">Copilot Assistant</h3>
       </div>

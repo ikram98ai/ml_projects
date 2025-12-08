@@ -4,7 +4,7 @@ import { Sidebar } from './Sidebar';
 import { AudioDetail } from './AudioDetail';
 import { AudioRecorder } from './AudioRecorder';
 import { TranscriptListItem, Transcript } from '../types';
-import { listTranscripts, getTranscript, uploadAudio, askQuestion } from '../services/api';
+import { listTranscripts, getTranscript, uploadAudio, askQuestion, getTranscriptStatus } from '../services/api';
 
 type View = 'list' | 'detail' | 'record';
 
@@ -24,38 +24,67 @@ export const Dashboard: React.FC = () => {
     loadTranscripts();
   }, []);
 
-  // Poll for processing transcripts
+  // Effect 1: Poll for status updates on any "processing" transcripts
   useEffect(() => {
     const processingTranscripts = transcripts.filter(t => t.status === 'processing');
-    
-    if (processingTranscripts.length === 0) return;
+    if (processingTranscripts.length === 0) {
+      return;
+    }
 
     const interval = setInterval(() => {
-      loadTranscripts();
+      const statusPromises = processingTranscripts.map(t => getTranscriptStatus(t.id, token!));
+      Promise.allSettled(statusPromises).then(results => {
+        setTranscripts(currentTranscripts => {
+          let hasChanged = false;
+          const newTranscripts = currentTranscripts.map(transcript => {
+            const resultIndex = processingTranscripts.findIndex(p => p.id === transcript.id);
+            if (resultIndex === -1) {
+              return transcript;
+            }
+
+            const result = results[resultIndex];
+            let newStatus = transcript.status;
+
+            if (result.status === 'fulfilled' && result.value.status !== 'processing') {
+              newStatus = result.value.status;
+            } else if (result.status === 'rejected') {
+              newStatus = 'failed';
+            }
+
+            if (newStatus !== transcript.status) {
+              hasChanged = true;
+              return { ...transcript, status: newStatus };
+            }
+            return transcript;
+          });
+
+          return hasChanged ? newTranscripts : currentTranscripts;
+        });
+      });
     }, 3000); // Poll every 3 seconds
 
     return () => clearInterval(interval);
-  }, [transcripts]);
+  }, [transcripts, token]);
 
-  // Auto-refresh selected transcript if it's processing
+  // Effect 2: Fetch full data when a selected transcript completes processing
   useEffect(() => {
-    if (!selectedId || !selectedTranscript || selectedTranscript.status !== 'processing') return;
+    if (!selectedId || !selectedTranscript) return;
 
-    const interval = setInterval(async () => {
-      try {
-        const updated = await getTranscript(selectedId, token!);
-        setSelectedTranscript(updated);
-        
-        if (updated.status === 'completed') {
-          loadTranscripts(); // Refresh the list
-        }
-      } catch (error) {
-        console.error('Failed to refresh transcript:', error);
-      }
-    }, 2000);
-
-    return () => clearInterval(interval);
-  }, [selectedId, selectedTranscript, token]);
+    const listItem = transcripts.find(t => t.id === selectedId);
+    
+    // If the detail view is showing "processing" but the list now says "completed", fetch full data.
+    if (selectedTranscript.status === 'processing' && listItem?.status === 'completed') {
+      getTranscript(selectedId, token!).then(fullData => {
+        setSelectedTranscript(fullData);
+        // Also update the list with the summary from the full data
+        setTranscripts(currentList =>
+          currentList.map(item =>
+            item.id === selectedId ? { ...item, summary: fullData.summary } : item
+          )
+        );
+      });
+    }
+  }, [transcripts, selectedId, selectedTranscript, token]);
 
   const loadTranscripts = async () => {
     try {
@@ -97,22 +126,35 @@ export const Dashboard: React.FC = () => {
     try {
       const result = await uploadAudio(audioBlob, title, token!);
       
-      // Add to list immediately
-      const newTranscript: TranscriptListItem = {
+      const now = new Date().toISOString();
+
+      // Add the new processing transcript to the main list
+      const newTranscriptItem: TranscriptListItem = {
         id: result.id,
         title: title,
         status: 'processing',
-        created_at: new Date().toISOString(),
+        created_at: now,
+        summary: 'Your transcript is being processed...', 
       };
-      setTranscripts(prev => [newTranscript, ...prev]);
+      setTranscripts(prev => [newTranscriptItem, ...prev]);
       
-      // Select it and switch to detail view
+      // Create a temporary full transcript object for the detail view
+      const tempTranscript: Transcript = {
+        id: result.id,
+        title: title,
+        status: 'processing',
+        created_at: now,
+        summary: '',
+        soap_note: null,
+        audio_url: '', // This will be fetched later by the poller
+        chats: [],
+      };
+      
+      // Select the new item and switch to the detail view
+      setSelectedTranscript(tempTranscript);
       setSelectedId(result.id);
       setView('detail');
-      
-      // Load the full transcript
-      const fullTranscript = await getTranscript(result.id, token!);
-      setSelectedTranscript(fullTranscript);
+
     } catch (error) {
       console.error('Upload failed:', error);
       alert('Failed to upload audio. Please try again.');
@@ -192,7 +234,7 @@ export const Dashboard: React.FC = () => {
           {view === 'list' || (!selectedTranscript && view === 'detail') ? (
             <div className="h-full flex items-center justify-center bg-slate-50">
               <div className="text-center max-w-md px-4">
-                <div className="bg-gradient-to-r from-blue-100 to-blue-800 rounded-full p-6 inline-block mb-4">
+                <div className="bg-gradient-to-r from-blue-100 to-blue-300 rounded-full p-6 inline-block mb-4">
                   <svg className="h-16 w-16 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
                   </svg>

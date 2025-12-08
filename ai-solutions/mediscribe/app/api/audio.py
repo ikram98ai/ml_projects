@@ -139,15 +139,36 @@ async def get_transcript(
         chats.sort(key=lambda x: x["created_at"])
         chats = chats[-20:]
 
+        # Generate pre-signed URL for audio file
+        from app.services.storage import get_presigned_url
+        audio_url = None
+        if transcript.s3_audio_key:
+            audio_url = get_presigned_url(transcript.s3_audio_key, expiration=3600)
+
         return {
             "id": transcript.id,
             "title": transcript.title,
             "status": transcript.status,
             "summary": transcript.summary,
             "soap_note": soap_note,
+            "audio_url": audio_url,
             "created_at": transcript.created_at,
             "chats": chats,
         }
+    except Transcript.DoesNotExist:
+        raise HTTPException(status_code=404, detail="Transcript not found")
+
+
+@router.get("/{transcript_id}/status")
+async def get_transcript_status(
+    transcript_id: str, current_user: User = Depends(get_current_user)
+):
+    try:
+        transcript = Transcript.get(transcript_id)
+        if transcript.user_id != current_user.username:
+            raise HTTPException(status_code=403, detail="Not authorized")
+
+        return {"id": transcript.id, "status": transcript.status}
     except Transcript.DoesNotExist:
         raise HTTPException(status_code=404, detail="Transcript not found")
 

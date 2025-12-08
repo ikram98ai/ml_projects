@@ -36,6 +36,7 @@ export interface Transcript {
   status: 'processing' | 'completed' | 'failed';
   summary?: string;
   soap_note?: SoapNote;
+  audio_url?: string;
   created_at: string;
   chats: ChatMessage[];
 }

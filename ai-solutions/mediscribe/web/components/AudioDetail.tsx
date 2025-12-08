@@ -1,6 +1,5 @@
 import React from 'react';
 import { Transcript, ChatMessageInput } from '../types';
-import { SoapCard } from './SoapCard';
 import { ChatInterface } from './ChatInterface';
 import { CollapsibleSection } from './CollapsibleSection';
 
@@ -15,15 +14,14 @@ export const AudioDetail: React.FC<AudioDetailProps> = ({
   onSendMessage,
   isChatLoading,
 }) => {
-  // Convert backend chat messages to frontend format
   const chatMessages: ChatMessageInput[] = transcript.chats.map(chat => ({
     role: chat.role === 'assistant' ? 'model' : 'user',
     text: chat.message,
   }));
 
-  return (
-    <div className="h-full flex flex-col bg-slate-50">
-      {transcript.status === 'processing' ? (
+  const renderContent = () => {
+    if (transcript.status === 'processing') {
+      return (
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <div className="inline-block animate-spin rounded-full h-16 w-16 border-4 border-slate-200 border-t-blue-600 mb-4"></div>
@@ -34,7 +32,11 @@ export const AudioDetail: React.FC<AudioDetailProps> = ({
             </div>
           </div>
         </div>
-      ) : transcript.status === 'failed' ? (
+      );
+    }
+
+    if (transcript.status === 'failed') {
+      return (
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center max-w-md">
             <div className="bg-red-100 rounded-full p-4 inline-block mb-4">
@@ -46,51 +48,86 @@ export const AudioDetail: React.FC<AudioDetailProps> = ({
             <p className="text-slate-600">There was an error processing this audio file. Please try uploading again.</p>
           </div>
         </div>
-      ) : (
-        <div className="flex-1 flex flex-col p-6 gap-4 overflow-hidden">
-          {/* Title */}
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4">
-            <h2 className="text-xl font-bold text-slate-800">{transcript.title}</h2>
-            <p className="text-sm text-slate-500 mt-1">
-              {new Date(transcript.created_at).toLocaleString()}
-            </p>
-          </div>
+      );
+    }
 
-          {/* Main Content Grid */}
-          <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-4 overflow-hidden">
-            {/* Left Column: Transcript & SOAP */}
-            <div className="flex flex-col gap-4 overflow-y-auto custom-scrollbar">
-              {/* Transcript Section */}
+    return (
+      <div className="flex-1 flex flex-col p-6 gap-6 overflow-hidden">
+        {/* Header */}
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1">
+              <h2 className="text-xl font-bold text-slate-800">{transcript.title}</h2>
+              <p className="text-sm text-slate-500 mt-1">
+                {new Date(transcript.created_at).toLocaleString('en-US', {
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric',
+                  hour: 'numeric',
+                  minute: '2-digit',
+                })}
+              </p>
+            </div>
+            {transcript.audio_url && (
+              <div className="flex-shrink-0">
+                <audio controls className="h-10" preload="metadata">
+                  <source src={transcript.audio_url} type="audio/mpeg" />
+                  <source src={transcript.audio_url} type="audio/wav" />
+                  Your browser does not support the audio element.
+                </audio>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Main Content Area */}
+        <div className="flex-1 flex flex-col md:flex-row gap-6 overflow-hidden">
+          {/* Primary Column: Chat */}
+          <main className="flex-1 flex flex-col gap-4 min-w-0">
+            <div className="flex-1 flex flex-col min-h-0 bg-white rounded-2xl shadow-sm border border-slate-200">
+              <ChatInterface
+                messages={chatMessages}
+                onSendMessage={onSendMessage}
+                isLoading={isChatLoading}
+              />
+            </div>
+            <div className="bg-blue-50 border border-blue-100 p-3 rounded-xl text-xs text-blue-700">
+              <strong>💬 Ask AI:</strong> Use the chat to clarify details or get additional insights from the consultation.
+            </div>
+          </main>
+
+          {/* Inspector Column: Details */}
+          <aside className="w-full md:w-1/3 md:max-w-md lg:max-w-lg flex flex-col gap-4">
+            <div className="overflow-y-auto custom-scrollbar space-y-4 bg-white rounded-2xl shadow-sm border border-slate-200 p-4">
               <CollapsibleSection title="Transcript" defaultOpen={true}>
                 <div className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap">
                   {transcript.summary || 'No transcript available'}
                 </div>
               </CollapsibleSection>
 
-              {/* SOAP Note Section */}
               {transcript.soap_note && (
                 <CollapsibleSection title="SOAP Note" defaultOpen={true}>
                   <div className="space-y-4">
                     <div>
-                      <h4 className="font-semibold text-slate-800 mb-2">Subjective</h4>
+                      <h4 className="font-semibold text-slate-800 mb-1">Subjective</h4>
                       <p className="text-sm text-slate-600 leading-relaxed">
                         {transcript.soap_note.subjective}
                       </p>
                     </div>
                     <div>
-                      <h4 className="font-semibold text-slate-800 mb-2">Objective</h4>
+                      <h4 className="font-semibold text-slate-800 mb-1">Objective</h4>
                       <p className="text-sm text-slate-600 leading-relaxed">
                         {transcript.soap_note.objective}
                       </p>
                     </div>
                     <div>
-                      <h4 className="font-semibold text-slate-800 mb-2">Assessment</h4>
+                      <h4 className="font-semibold text-slate-800 mb-1">Assessment</h4>
                       <p className="text-sm text-slate-600 leading-relaxed">
                         {transcript.soap_note.assessment}
                       </p>
                     </div>
                     <div>
-                      <h4 className="font-semibold text-slate-800 mb-2">Plan</h4>
+                      <h4 className="font-semibold text-slate-800 mb-1">Plan</h4>
                       <p className="text-sm text-slate-600 leading-relaxed">
                         {transcript.soap_note.plan}
                       </p>
@@ -99,25 +136,15 @@ export const AudioDetail: React.FC<AudioDetailProps> = ({
                 </CollapsibleSection>
               )}
             </div>
-
-            {/* Right Column: Chat */}
-            <div className="flex flex-col gap-4 h-full">
-              <div className="flex-1 min-h-0">
-                <ChatInterface
-                  messages={chatMessages}
-                  onSendMessage={onSendMessage}
-                  isLoading={isChatLoading}
-                />
-              </div>
-              
-              {/* Info Box */}
-              <div className="bg-blue-50 border border-blue-100 p-3 rounded-xl text-xs text-blue-700">
-                <strong>💬 Ask Questions:</strong> Use the chat to clarify details or get additional insights from the consultation.
-              </div>
-            </div>
-          </div>
+          </aside>
         </div>
-      )}
+      </div>
+    );
+  };
+
+  return (
+    <div className="h-full flex flex-col bg-slate-50">
+      {renderContent()}
     </div>
   );
 };

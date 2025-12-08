@@ -13,6 +13,11 @@ export interface UploadResponse {
   status: string;
 }
 
+export interface TranscriptStatus {
+    id: string;
+    status: string;
+}
+
 export interface AskResponse {
   answer: string;
 }
@@ -110,6 +115,19 @@ export const getTranscript = async (transcriptId: string, token: string): Promis
 
   return response.json();
 };
+
+export const getTranscriptStatus = async (transcriptId: string, token: string): Promise<TranscriptStatus> => {
+    const response = await fetch(`${API_BASE}/audio/${transcriptId}/status`, {
+        method: 'GET',
+        headers: getAuthHeaders(token),
+    });
+
+    if (!response.ok) {
+        throw new Error('Failed to get transcript status');
+    }
+
+    return response.json();
+}
 
 export const askQuestion = async (
   transcriptId: string,
