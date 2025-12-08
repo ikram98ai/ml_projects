@@ -30,7 +30,7 @@ def upload_to_gemini(path, mime_type="audio/mp3"):
 def process_audio(audio_file_path) -> ConsultationResult | None:
     """Transcribes audio and generates SOAP note using Gemini."""
     try:
-        model = genai.GenerativeModel("gemini-1.5-flash")
+        model = genai.GenerativeModel("gemini-2.5-flash")
 
         gemini_file = upload_to_gemini(audio_file_path)
 
@@ -57,7 +57,7 @@ def process_audio(audio_file_path) -> ConsultationResult | None:
 def ask_question(transcript: str, question: str, history: list = None):
     """Asks a question about the transcript."""
     try:
-        model = genai.GenerativeModel("gemini-1.5-flash")
+        model = genai.GenerativeModel("gemini-2.5-flash")
 
         system_instruction = f'You are a helpful medical assistant. You have access to the following consultation transcript: "{transcript}". Answer the doctor\'s questions based strictly on this context.'
 

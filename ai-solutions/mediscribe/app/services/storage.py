@@ -11,10 +11,35 @@ s3_client = boto3.client(
     aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
     region_name=settings.AWS_REGION,
 )
+def ensure_bucket_exists() -> bool:
+    """Ensure the S3 bucket exists; create it if missing."""
+    bucket = settings.S3_BUCKET_NAME
+    try:
+        s3_client.head_bucket(Bucket=bucket)
+        return True
+    except ClientError as e:
+        logger.info("Bucket %s not found, attempting to create it", bucket)
+        try:
+            if settings.AWS_REGION in (None, "", "us-east-1"):
+                s3_client.create_bucket(Bucket=bucket)
+            else:
+                s3_client.create_bucket(
+                    Bucket=bucket,
+                    CreateBucketConfiguration={"LocationConstraint": settings.AWS_REGION},
+                )
+            logger.info("Created bucket %s", bucket)
+            return True
+        except ClientError as ce:
+            logger.error("Failed to create bucket %s: %s", bucket, ce)
+            return False
 
 
 def upload_file(file_obj, object_name):
     """Upload a file to an S3 bucket"""
+    if not ensure_bucket_exists():
+        logger.error("Bucket does not exist and could not be created.")
+        return False
+
     try:
         s3_client.upload_fileobj(file_obj, settings.S3_BUCKET_NAME, object_name)
     except ClientError as e:

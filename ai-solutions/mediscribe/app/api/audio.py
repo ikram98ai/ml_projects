@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, UploadFile, File, BackgroundTasks, HTTPException
+from fastapi import APIRouter, Depends, UploadFile, File, Form, BackgroundTasks, HTTPException
 from app.api.deps import get_current_user
 from app.models import User, Transcript, Chat
 from app.services.storage import upload_file, upload_text, get_text_from_s3
@@ -51,6 +51,7 @@ def process_audio_task(transcript_id: str, file_path: str):
 @router.post("/upload")
 async def upload_audio(
     background_tasks: BackgroundTasks,
+    title: str = Form(...),
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_user),
 ):
@@ -71,6 +72,7 @@ async def upload_audio(
     transcript = Transcript(
         id=file_id,
         user_id=current_user.username,
+        title=title,
         s3_audio_key=s3_key,
         status="processing",
     )
@@ -94,6 +96,8 @@ async def list_transcripts(current_user: User = Depends(get_current_user)):
         results.append(
             {
                 "id": item.id,
+                "title": item.title,
+                "audio_url": item.s3_audio_key,
                 "status": item.status,
                 "created_at": item.created_at,
                 "summary": item.summary[:100] + "..." if item.summary else None,
@@ -137,6 +141,7 @@ async def get_transcript(
 
         return {
             "id": transcript.id,
+            "title": transcript.title,
             "status": transcript.status,
             "summary": transcript.summary,
             "soap_note": soap_note,

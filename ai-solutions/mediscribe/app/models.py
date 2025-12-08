@@ -28,6 +28,7 @@ class Transcript(Model):
     user_id = UnicodeAttribute()
     s3_audio_key = UnicodeAttribute()
     s3_transcript_key = UnicodeAttribute(null=True)
+    title = UnicodeAttribute()
     summary = UnicodeAttribute(null=True)
     soap_note = UnicodeAttribute(null=True)  # JSON-serialized SOAP note
     created_at = UTCDateTimeAttribute(default=datetime.now)
@@ -36,7 +37,7 @@ class Transcript(Model):
 
 class Chat(Model):
     class Meta:
-        table_name = "chats"
+        table_name = "healthcare_poc_chats"
         region = settings.AWS_REGION
         aws_access_key_id = settings.AWS_ACCESS_KEY_ID
         aws_secret_access_key = settings.AWS_SECRET_ACCESS_KEY
