@@ -54,25 +54,31 @@ def delete_all_tables():
             )
 
 
-# User management commands
 @app.command()
 def create_user(
-    username: str = typer.Argument(..., help="Username"),
-    password: str = typer.Option(..., prompt=True, hide_input=True, help="Password"),
+    username: str = typer.Option(..., prompt=True, help="Username"),
+    password: str = typer.Option(
+        ..., prompt=True, hide_input=True, confirmation_prompt=True, help="Password"
+    ),
+    role: str = typer.Option("clinician", prompt=True, help="User role"),
 ):
-    """Create a new user"""
+    """Create a new user (will prompt for missing values)"""
     try:
         if not User.exists():
             User.create_table(read_capacity_units=1, write_capacity_units=1, wait=True)
 
-        if User.count(username) > 0:
+        # If you have a different uniqueness check, replace this
+        try:
+            User.get(username)
             typer.secho(f"✗ User '{username}' already exists.", fg=typer.colors.RED)
             return
+        except User.DoesNotExist:
+            pass
 
         user = User(
             username=username,
             password_hash=get_password_hash(password),
-            role="clinician",
+            role=role,
         )
         user.save()
         typer.secho(f"✓ User '{username}' created successfully.", fg=typer.colors.GREEN)
@@ -81,8 +87,8 @@ def create_user(
 
 
 @app.command()
-def delete_user(username: str = typer.Argument(..., help="Username")):
-    """Delete a user"""
+def delete_user(username: str = typer.Option(..., prompt=True, help="Username")):
+    """Delete a user (prompts for username if not provided)"""
     if not typer.confirm(f"Are you sure you want to delete user '{username}'?"):
         typer.echo("Cancelled.")
         return

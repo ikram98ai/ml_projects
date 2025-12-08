@@ -1,5 +1,5 @@
 from pynamodb.models import Model
-from pynamodb.attributes import UnicodeAttribute, UTCDateTimeAttribute
+from pynamodb.attributes import UnicodeAttribute, UTCDateTimeAttribute, BinaryAttribute
 from app.config import settings
 from datetime import datetime
 import uuid
@@ -13,7 +13,7 @@ class User(Model):
         aws_secret_access_key = settings.AWS_SECRET_ACCESS_KEY
 
     username = UnicodeAttribute(hash_key=True)
-    password_hash = UnicodeAttribute()
+    password_hash = BinaryAttribute(legacy_encoding=False)
     role = UnicodeAttribute(default="clinician")
 
 
