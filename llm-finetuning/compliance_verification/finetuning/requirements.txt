@@ -1,0 +1,4 @@
+unsloth
+pillow
+requests
+transformers>=4.51.0
