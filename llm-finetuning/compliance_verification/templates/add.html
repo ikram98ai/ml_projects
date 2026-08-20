@@ -1,0 +1,85 @@
+<!-- templates/add.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto py-8">
+    <div class="mb-8">
+        <a href="/manage" class="inline-flex items-center text-indigo-600 hover:text-indigo-700 transition duration-200 ease-in-out text-sm font-medium">
+            <i class="fas fa-arrow-left mr-2"></i> Back to Documents
+        </a>
+        <h1 class="text-3xl font-extrabold text-gray-900 mt-4">Add New Document</h1>
+        <p class="text-gray-600 mt-2">Fill in the details below to add a new document to your knowledge base.</p>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-lg p-6 sm:p-8">
+        <form method="post" enctype="multipart/form-data">
+            <div class="mb-6">
+                <label class="block text-gray-700 text-sm font-bold mb-2" for="source">
+                    Source Name
+                </label>
+                <input type="text" id="source" name="source" required
+                    class="shadow-sm appearance-none border rounded-lg w-full py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition duration-200 ease-in-out"
+                    placeholder="e.g., Legal Guidelines, Product Docs...">
+                <p class="text-gray-500 text-xs mt-2">A descriptive name for the document's origin.</p>
+            </div>
+            
+            <div class="mb-6">
+                <label class="block text-gray-700 text-sm font-bold mb-2">
+                    Content
+                </label>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <label class="flex items-center justify-center p-4 border-2 border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition duration-200 ease-in-out has-[:checked]:border-indigo-500 has-[:checked]:bg-indigo-50 has-[:checked]:text-indigo-700">
+                        <input type="radio" name="inputType" value="text" class="form-radio h-4 w-4 text-indigo-600 transition duration-200 ease-in-out" checked>
+                        <span class="ml-2 text-sm font-medium">Enter Text</span>
+                    </label>
+                    
+                    <label class="flex items-center justify-center p-4 border-2 border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition duration-200 ease-in-out has-[:checked]:border-indigo-500 has-[:checked]:bg-indigo-50 has-[:checked]:text-indigo-700">
+                        <input type="radio" name="inputType" value="file" class="form-radio h-4 w-4 text-indigo-600 transition duration-200 ease-in-out">
+                        <span class="ml-2 text-sm font-medium">Upload DOCX File</span>
+                    </label>
+                </div>
+
+                <div id="textInput" class="mt-3">
+                    <textarea name="text" rows="8"
+                        class="shadow-sm appearance-none border rounded-lg w-full py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition duration-200 ease-in-out"
+                        placeholder="Paste your document content here..."></textarea>
+                </div>
+                
+                <div id="fileInput" class="mt-3 hidden">
+                    <label class="flex flex-col items-center justify-center w-full h-48 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 transition duration-200 ease-in-out">
+                        <div class="flex flex-col items-center justify-center pt-5 pb-6">
+                            <i class="fas fa-file-word text-indigo-500 text-4xl mb-3"></i>
+                            <p class="mb-2 text-sm text-gray-600"><span class="font-semibold">Click to upload</span> or drag and drop</p>
+                            <p class="text-xs text-gray-500">DOCX (Max 5MB)</p>
+                        </div>
+                        <input type="file" name="file" class="hidden" accept=".docx">
+                    </label>
+                </div>
+            </div>
+            
+            <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-200 ease-in-out transform hover:scale-105">
+                <i class="fas fa-plus mr-2"></i> Add to Knowledge Base
+            </button>
+        </form>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const textRadio = document.querySelector('input[value="text"]');
+        const fileRadio = document.querySelector('input[value="file"]');
+        const textInput = document.getElementById('textInput');
+        const fileInput = document.getElementById('fileInput');
+        
+        textRadio.addEventListener('change', () => {
+            textInput.style.display = 'block';
+            fileInput.style.display = 'none';
+        });
+        
+        fileRadio.addEventListener('change', () => {
+            textInput.style.display = 'none';
+            fileInput.style.display = 'block';
+        });
+    });
+</script>
+{% endblock %}

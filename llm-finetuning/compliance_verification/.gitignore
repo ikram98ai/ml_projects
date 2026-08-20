@@ -1,0 +1,12 @@
+.venv
+.env
+data*
+__pycache__
+*.pyc
+.terraform
+.terraform*
+terraform.tfstate*
+*.csv
+test
+*.jsonl
+*.pem
